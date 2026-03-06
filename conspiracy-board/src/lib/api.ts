@@ -2,12 +2,12 @@ import type { ConspiracyChain, GenerateRequest } from '@/types/conspiracy.ts'
 import { FONT_CATEGORIES } from '@/types/conspiracy.ts'
 
 export class ApiError extends Error {
-  constructor(
-    message: string,
-    public statusCode: number,
-  ) {
+  statusCode: number
+
+  constructor(message: string, statusCode: number) {
     super(message)
     this.name = 'ApiError'
+    this.statusCode = statusCode
   }
 }
 

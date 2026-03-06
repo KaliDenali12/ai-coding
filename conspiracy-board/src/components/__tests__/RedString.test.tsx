@@ -4,8 +4,9 @@ import { RedString } from '../RedString.tsx'
 
 // jsdom doesn't have SVGPathElement.getTotalLength — polyfill it
 beforeAll(() => {
-  if (typeof SVGElement !== 'undefined' && !SVGElement.prototype.getTotalLength) {
-    (SVGElement.prototype as Record<string, unknown>).getTotalLength = () => 500
+  if (typeof SVGElement !== 'undefined') {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (SVGElement.prototype as any).getTotalLength = () => 500
   }
 })
 

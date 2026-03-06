@@ -1,15 +1,88 @@
-import { useState } from 'react'
+import { useState, useCallback, useRef } from 'react'
+import { AnimatePresence } from 'framer-motion'
+import { LandingScreen } from '@/components/LandingScreen.tsx'
+import { LoadingScreen } from '@/components/LoadingScreen.tsx'
+import { Corkboard } from '@/components/Corkboard.tsx'
+import { ErrorScreen } from '@/components/ErrorScreen.tsx'
+import { generateConspiracy, ApiError } from '@/lib/api.ts'
+import type { ConspiracyChain } from '@/types/conspiracy.ts'
 
 type AppScreen = 'landing' | 'loading' | 'board' | 'error'
 
 function App() {
-  const [_screen, _setScreen] = useState<AppScreen>('landing')
+  const [screen, setScreen] = useState<AppScreen>('landing')
+  const [boardData, setBoardData] = useState<ConspiracyChain | null>(null)
+  const [lastInputs, setLastInputs] = useState<{ a: string; b: string }>({ a: '', b: '' })
+  const abortControllerRef = useRef<AbortController | null>(null)
+
+  const handleSubmit = useCallback(async (conceptA: string, conceptB: string) => {
+    setLastInputs({ a: conceptA, b: conceptB })
+    setScreen('loading')
+
+    // Cancel any in-flight request
+    abortControllerRef.current?.abort()
+    abortControllerRef.current = new AbortController()
+
+    try {
+      const data = await generateConspiracy({ conceptA, conceptB })
+      setBoardData(data)
+      setScreen('board')
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') return
+      console.error('Generation failed:', error)
+      if (error instanceof ApiError) {
+        console.error(`API error ${error.statusCode}: ${error.message}`)
+      }
+      setScreen('error')
+    }
+  }, [])
+
+  const handleTimeout = useCallback(() => {
+    abortControllerRef.current?.abort()
+    setScreen('error')
+  }, [])
+
+  const handleRetry = useCallback(() => {
+    setScreen('landing')
+  }, [])
+
+  const handleNewInvestigation = useCallback(() => {
+    setBoardData(null)
+    setLastInputs({ a: '', b: '' })
+    setScreen('landing')
+  }, [])
 
   return (
-    <div className="h-full w-full bg-landing-bg text-white font-typewriter">
-      <div className="flex items-center justify-center h-full">
-        <h1 className="text-4xl text-center">"It's All Connected."</h1>
-      </div>
+    <div className="h-full w-full" data-testid="app-root">
+      <AnimatePresence mode="wait">
+        {screen === 'landing' && (
+          <LandingScreen
+            key="landing"
+            onSubmit={handleSubmit}
+            initialA={lastInputs.a}
+            initialB={lastInputs.b}
+          />
+        )}
+
+        {screen === 'loading' && (
+          <LoadingScreen key="loading" onTimeout={handleTimeout} />
+        )}
+
+        {screen === 'board' && boardData && (
+          <Corkboard
+            key="board"
+            data={boardData}
+            onNewInvestigation={handleNewInvestigation}
+          />
+        )}
+
+        {screen === 'error' && (
+          <ErrorScreen
+            key="error"
+            onRetry={handleRetry}
+          />
+        )}
+      </AnimatePresence>
     </div>
   )
 }

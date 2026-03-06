@@ -4,9 +4,17 @@ Conspiracy Board: comedic AI web app connecting two concepts via a 7-node conspi
 
 ## Current State
 
-- **Test count**: 0 (no code yet)
-- **Deploy URL**: TBD
-- **Last major change**: Initial setup — PRD documents created, AI documentation system established
+- **Test count**: 120 (13 test files)
+- **Deploy URL**: TBD (needs Netlify setup with ANTHROPIC_API_KEY)
+- **Last major change**: Full MVP build complete — all P0 features implemented
+
+## Key Technical Decisions
+
+- Tailwind CSS v4 with `@theme` in CSS (not tailwind.config.js)
+- `erasableSyntaxOnly: true` in tsconfig — no parameter property shorthand
+- jsdom needs SVG polyfill: `(SVGElement.prototype as any).getTotalLength = () => 500`
+- Framer Motion mocked in all component tests with filtered prop passthrough
+- Seeded random in layout algorithm for deterministic card positions per board
 
 ## Topic Files
 

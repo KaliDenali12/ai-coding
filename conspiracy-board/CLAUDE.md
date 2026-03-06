@@ -277,17 +277,15 @@ type FontCategory =
 
 ## What's Not Yet Implemented
 
-This is a greenfield project — no code exists yet. Only PRD documents are in place:
-- `PRD.md/01_Vision.md` — Product overview, goals, audience
-- `PRD.md/02_QA.md` — Q&A covering all design decisions
-- `PRD.md/03_Feature_List.md` — 19 features (14 P0, 2 P1, 3 P2)
-- `PRD.md/04_Tech_Stack.md` — Full technology breakdown
-- `PRD.md/05_User_Journey.md` — 5-state user flow
+All P0 and P1 features are implemented. Remaining P2 items:
 
-### Feature Priority
-- **P0 (Must Ship)**: F-001 through F-014 — inputs, API, safety, loading, corkboard, Polaroids, fonts, flip, reveal, errors, restart, desktop layout
-- **P1 (Important)**: F-015 mobile layout, F-016 timeout handling
-- **P2 (Polish)**: F-017 share/export, F-018 sound effects, F-019 case file stamp
+- **F-017 Share/Screenshot Export**: Image export (html2canvas), text-to-clipboard
+- **F-018 Sound Effects**: Pin-drop, string-stretch, paper-flip, typewriter-click (Howler.js)
+- **F-019 Case File Stamp**: DONE (implemented in CaseFileStamp.tsx)
+
+### Deployment
+- Netlify site needs to be created and linked
+- `ANTHROPIC_API_KEY` must be set in Netlify environment variables
 
 ## Documentation Hierarchy
 

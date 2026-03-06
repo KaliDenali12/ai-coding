@@ -110,7 +110,7 @@ export function PolaroidCard({
     return (
       <div
         style={{ transform: `rotate(${rotation}deg)` }}
-        className="w-44 md:w-52"
+        className="w-[150px] md:w-[200px]"
       >
         {cardContent}
       </div>
@@ -130,7 +130,7 @@ export function PolaroidCard({
       }}
       whileHover={{ scale: 1.03, zIndex: 50 }}
       style={{ transform: `rotate(${rotation}deg)` }}
-      className="w-44 md:w-52"
+      className="w-[150px] md:w-[200px]"
     >
       {cardContent}
     </motion.div>

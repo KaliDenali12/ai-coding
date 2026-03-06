@@ -37,15 +37,20 @@ export function Corkboard({ data, onNewInvestigation }: CorkboardProps) {
   }, [])
 
   const isMobile = viewportSize.width < 768
-  const cardWidth = isMobile ? 160 : 200
-  const cardHeight = isMobile ? 220 : 280
+  const cardWidth = isMobile ? 150 : 200
+  const cardHeight = isMobile ? 210 : 280
+
+  // On mobile, we need more height to fit 7 cards vertically
+  const boardHeight = isMobile
+    ? Math.max(viewportSize.height, cardHeight * 7 + 200)
+    : viewportSize.height
 
   const positions = useMemo(
     () =>
       calculateCardPositions(
         {
           viewportWidth: viewportSize.width,
-          viewportHeight: viewportSize.height,
+          viewportHeight: boardHeight,
           cardWidth,
           cardHeight,
           cardCount: data.chain.length,
@@ -54,7 +59,7 @@ export function Corkboard({ data, onNewInvestigation }: CorkboardProps) {
         // Use case file number as seed for unique-per-board layout
         data.case_file_number.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0),
       ),
-    [viewportSize, cardWidth, cardHeight, data.chain.length, isMobile, data.case_file_number],
+    [viewportSize, boardHeight, cardWidth, cardHeight, data.chain.length, isMobile, data.case_file_number],
   )
 
   // Calculate timing for reveal sequence
@@ -116,7 +121,8 @@ export function Corkboard({ data, onNewInvestigation }: CorkboardProps) {
 
   return (
     <motion.div
-      className="h-full w-full cork-bg cork-vignette relative overflow-hidden"
+      className="w-full cork-bg cork-vignette relative overflow-x-hidden overflow-y-auto"
+      style={{ minHeight: '100%', height: isMobile ? `${boardHeight}px` : '100%' }}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -126,7 +132,8 @@ export function Corkboard({ data, onNewInvestigation }: CorkboardProps) {
     >
       {/* SVG layer for strings */}
       <svg
-        className="absolute inset-0 w-full h-full pointer-events-none z-0"
+        className="absolute inset-0 w-full pointer-events-none z-0"
+        style={{ height: isMobile ? `${boardHeight}px` : '100%' }}
         data-testid="string-layer"
       >
         {stringPaths.map((path, i) => (

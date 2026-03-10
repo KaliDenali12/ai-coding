@@ -7,7 +7,7 @@ Comedic AI-powered SPA: user enters two concepts, Claude generates a 7-node cons
 - **Always deploy after changes**: Push to `main` on GitHub; Netlify auto-deploys.
 - **Content safety is non-negotiable**: 3-layer safety (client blocklist, server blocklist, Claude system prompt). Every change touching AI output or user input must respect all three.
 - **No partial boards**: Board renders completely or shows a themed error. Never render a half-built chain.
-- **Run tests before committing**: `npm test` (272+ tests, all must pass).
+- **Run tests before committing**: `npm test` (263+ tests, all must pass).
 
 ## Tech Stack
 
@@ -20,7 +20,6 @@ Comedic AI-powered SPA: user enters two concepts, Claude generates a 7-node cons
 | AI | Anthropic Claude Sonnet via `@anthropic-ai/sdk` | 0.78 |
 | Testing | Vitest + Testing Library + jsdom | 3.x + 28.x |
 | Linting | ESLint + typescript-eslint + React hooks/refresh | 9.x (flat config) |
-| CSS Utility | clsx + tailwind-merge via `cn()` | — |
 
 ## Project Structure
 
@@ -42,7 +41,6 @@ conspiracy-board/
 │   │   ├── layout.ts              # Card positioning (zigzag + seeded random)
 │   │   ├── blocklist.ts           # Client-side input blocklist
 │   │   ├── constants.ts           # Example pairs, loading messages, timing values
-│   │   ├── cn.ts                  # Tailwind merge utility
 │   │   └── __tests__/             # Lib tests
 │   ├── types/
 │   │   └── conspiracy.ts          # ConspiracyChain, ConspiracyNode, FontCategory, GenerateRequest
@@ -72,7 +70,7 @@ npm run dev                # Vite dev server (port 5173)
 npx netlify dev            # Dev with Netlify Functions
 npm run build              # tsc -b && vite build → dist/
 npm run lint               # eslint (flat config, must pass)
-npm test                   # vitest run (272+ tests)
+npm test                   # vitest run (263+ tests)
 npm run test:watch         # vitest watch mode
 npx tsc --noEmit           # Type check only
 ```
@@ -186,7 +184,6 @@ No database. Single API response type — see `src/types/conspiracy.ts`:
 - **Security headers**: Configured in `netlify.toml` `[[headers]]` block — CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy.
 - **Build pipeline security**: `netlify.toml` build command runs `npm audit --audit-level=high` before build. Fails on high/critical advisories.
 - **ESLint flat config**: `eslint.config.js` uses ESLint 9 flat config format. No `.eslintrc` file. `react-hooks/purity` is disabled (false positives on intentional `Math.random()` in `useMemo`). Underscore-prefixed vars are allowed as unused.
-- **`cn()` utility unused**: `src/lib/cn.ts` wraps `clsx` + `tailwind-merge` but no component currently imports it. Both packages are runtime deps providing zero production value until `cn()` is adopted.
 - **Vitest 4 blocked**: Upgrade from 3.x to 4.x breaks 16 tests in `generate-contract.test.ts` due to mock constructor behavior change (`new` keyword now constructs instead of calling `mock.apply`). Mock patterns in that file need updating before upgrade.
 - **Import extensions**: This project uses `allowImportingTsExtensions` + `verbatimModuleSyntax`. Always include `.ts`/`.tsx` in imports.
 - **No public/ directory**: Cork texture is CSS-only (`cork-bg` class). No image files exist.

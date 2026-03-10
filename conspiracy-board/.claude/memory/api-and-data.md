@@ -85,7 +85,6 @@ type FontCategory = 'horror' | 'corporate' | 'ancient' | 'chaotic' |
 interface ConspiracyNode { title, emoji, font_category, teaser, briefing }
 interface ConspiracyChain { chain: ConspiracyNode[], case_file_number, classification_level }
 interface GenerateRequest { conceptA, conceptB }
-interface GenerateError { error, message }
 ```
 
 ## Pitfalls

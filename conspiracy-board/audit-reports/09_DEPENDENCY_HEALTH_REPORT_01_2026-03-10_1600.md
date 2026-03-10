@@ -15,10 +15,10 @@
 | **Total dependencies (direct)** | 18 (6 runtime, 12 dev) |
 | **Total transitive dependencies** | ~290 packages |
 | **Known vulnerabilities** | 0 |
-| **Dependencies 1+ major versions behind** | 7 |
+| **Dependencies 1+ major versions behind** | 5 (was 7, upgraded 2) |
 | **Potentially abandoned dependencies** | 0 |
 | **License risks found** | 0 (MPL-2.0 noted, acceptable) |
-| **Upgrades applied** | 4 (patch/minor within semver range) |
+| **Upgrades applied** | 6 (4 patch/minor + 2 major) |
 | **Dependencies unused in production** | 2 (clsx, tailwind-merge) |
 | **Dead dev tooling** | 6 packages (eslint ecosystem — no config exists) |
 
@@ -78,10 +78,10 @@ npm audit: found 0 vulnerabilities
 | `vitest` | 3.2.4 | 4.0.18 | 1 major | dev | Active (VoidZero) |
 | `eslint` | 9.39.4 | 10.0.3 | 1 major | dev | Active (OpenJS Foundation) |
 | `@eslint/js` | 9.39.4 | 10.0.1 | 1 major | dev | Active (OpenJS Foundation) |
-| `jsdom` | 26.1.0 | 28.1.0 | 2 major | dev | Active (jsdom team) |
+| `jsdom` | 28.1.0 | 28.1.0 | 0 (upgraded) | dev | Active (jsdom team) |
 | `globals` | 16.5.0 | 17.4.0 | 1 major | dev | Active (sindresorhus) |
 | `eslint-plugin-react-refresh` | 0.4.26 | 0.5.2 | 1 minor (pre-1.0) | dev | Active |
-| `@types/node` | 24.12.0 | 25.4.0 | 1 major | dev | Active (DefinitelyTyped) |
+| `@types/node` | 25.4.0 | 25.4.0 | 0 (upgraded) | dev | Active (DefinitelyTyped) |
 | `@anthropic-ai/sdk` | 0.78.0 | 0.78.0 | 0 | runtime | Active (Anthropic) |
 | `clsx` | 2.1.1 | 2.1.1 | 0 | runtime | Stable |
 | `framer-motion` | 12.35.2 | 12.35.2 | 0 | runtime | Active (Matt Perry) |
@@ -105,8 +105,17 @@ npm audit: found 0 vulnerabilities
 | `eslint` | 9.39.3 | 9.39.4 | patch | Yes (272/272) |
 | `framer-motion` | 12.35.0 | 12.35.2 | patch | Yes (272/272) |
 | `typescript-eslint` | 8.56.1 | 8.57.0 | minor | Yes (272/272) |
+| `jsdom` | 26.1.0 | 28.1.0 | **major** | Yes (272/272) |
+| `@types/node` | 24.12.0 | 25.4.0 | **major** | Yes (272/272) |
 
-Build also verified passing after all upgrades.
+Build and type checking verified passing after all upgrades.
+
+### Additional Actions Taken
+
+- **Created `eslint.config.js`**: Fixed 6 dead ESLint packages — `npm run lint` now passes cleanly.
+- **Fixed lint errors**: Regex escape in blocklist (both copies), removed unused test variable, suppressed intentional constant expression.
+- **Added `.github/dependabot.yml`**: Weekly npm dependency update PRs, patch/minor grouped.
+- **Attempted Vitest 4 upgrade**: Reverted — 16 test failures in `generate-contract.test.ts` due to mock constructor behavior change. Requires updating mock patterns before upgrade.
 
 ---
 

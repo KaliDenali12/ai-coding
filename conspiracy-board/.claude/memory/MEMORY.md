@@ -4,7 +4,7 @@ Conspiracy Board: comedic AI web app connecting two concepts via a 7-node conspi
 
 ## Current State
 
-- **Test count**: 120 tests across 13 files
+- **Test count**: 315 tests across 24 files (0 skipped)
 - **Deploy URL**: TBD (needs Netlify setup + `ANTHROPIC_API_KEY`)
 - **Status**: All P0/P1 features complete. P2 remaining: share/export, sound effects.
 - **Branch**: `master`

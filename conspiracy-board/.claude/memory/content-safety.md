@@ -6,7 +6,7 @@
 - `checkInputs()`: validates non-empty, ≤50 chars, different concepts, not blocklisted
 - `isBlocked()`: normalizes input (leet-speak substitution), checks against `BLOCKED_TERMS`
 - Substitution map: `@ → a`, `0 → o`, `1 → i`, `3 → e`, `$ → s`, `5 → s`, `7 → t`, `! → i`, `+ → t`
-- Normalizes separators: `[\s\-_.]+` → single space
+- Normalizes separators: strips `[\-_.]+` entirely, then collapses `\s+` → single space
 - Returns themed error: "This subject is classified beyond our clearance level."
 
 ### Layer 2: Server Blocklist (netlify/functions/generate.ts)
@@ -48,16 +48,17 @@ Server receives → validate fields → server isBlocked() → if blocked, retur
                                                         → if valid, call Claude
 ```
 
-## Known Bug: Separator Bypass (BUG-001)
-`normalizeInput()` replaces separators (`[\s\-_.]+`) with a **space** instead of removing them.
-- `h.i.t.l.e.r` → `h i t l e r` (does NOT match `hitler`)
-- **Fix**: Change `' '` to `''` in the regex replacement in BOTH `blocklist.ts` and `generate.ts`
-- Tracked in: `audit-reports/TEST_COVERAGE_REPORT_001_2026-03-10.md` BUG-001
-- Skipped test: `src/lib/__tests__/blocklist-deep.test.ts` — `catches terms with separator bypasses`
+## BUG-001: Separator Bypass (FIXED 2026-03-10)
+Fixed by splitting `normalizeInput()` regex into two steps:
+1. Strip non-space separators: `normalized.replace(/[\-_.]+/g, '')` — catches `h.i.t.l.e.r`
+2. Collapse whitespace: `normalized.replace(/\s+/g, ' ')` — preserves multi-word matching like `sandy hook`
+
+**Important**: A naive "replace all separators with empty string" breaks multi-word blocked terms.
+Applied to BOTH `blocklist.ts` and `generate.ts`. Separator bypass test re-enabled.
 
 ## Testing Safety Changes
 After modifying blocklist or system prompt:
 - Run `npm test` (blocklist tests in `src/lib/__tests__/blocklist.test.ts` and `blocklist-deep.test.ts`)
 - Test with diverse input pairs manually to verify tone and safety
 - Test character substitution bypass attempts (e.g., `n1gg3r` should be caught)
-- After fixing BUG-001, unskip the separator bypass test in `blocklist-deep.test.ts`
+- Test separator bypass attempts (e.g., `h.i.t.l.e.r` should be caught)

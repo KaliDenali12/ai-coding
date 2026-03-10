@@ -9,7 +9,7 @@
 
 ## Commands
 ```bash
-npm test              # vitest run (265+ tests)
+npm test              # vitest run (315+ tests)
 npm run test:watch    # vitest watch mode
 npm run test:coverage # vitest with coverage
 ```
@@ -20,7 +20,8 @@ npm run test:coverage # vitest with coverage
 - Lib tests: `src/lib/__tests__/*.test.ts` (incl. cn, deep api/blocklist/layout/fonts tests)
 - App integration: `src/__tests__/App.test.tsx`, `src/__tests__/App-integration-deep.test.tsx`
 - Server function: `netlify/functions/__tests__/generate.test.ts`, `generate-handler.test.ts`
-- Audit report: `audit-reports/TEST_COVERAGE_REPORT_001_2026-03-10.md`
+- API contract: `netlify/functions/__tests__/generate-contract.test.ts` (49 tests)
+- Audit reports: `audit-reports/TEST_COVERAGE_REPORT_001_2026-03-10.md`, `TEST_HARDENING_REPORT_01_2026-03-10.md`
 
 ## Mocking Patterns
 

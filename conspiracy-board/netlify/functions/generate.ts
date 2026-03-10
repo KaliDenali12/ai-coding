@@ -113,6 +113,14 @@ Choose font_category to match the EMOTIONAL TONE of each step:
 - retro: nostalgic, mid-century, pop-culture
 - underground: counter-culture, rebel, hidden society`
 
+// --- Response Helper ---
+function jsonResponse(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  })
+}
+
 // --- Validation ---
 interface ChainNode {
   title: string
@@ -162,56 +170,38 @@ function validateResponse(data: unknown): ChainResponse {
 // --- Handler ---
 export default async (request: Request) => {
   if (request.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'method_not_allowed', message: 'Method not allowed' }), {
-      status: 405,
-      headers: { 'Content-Type': 'application/json' },
-    })
+    return jsonResponse({ error: 'method_not_allowed', message: 'Method not allowed' }, 405)
   }
 
   try {
     const contentLength = request.headers.get('content-length')
     if (contentLength && parseInt(contentLength, 10) > 10_000) {
-      return new Response(
-        JSON.stringify({ error: 'validation', message: 'Request too large.' }),
-        { status: 413, headers: { 'Content-Type': 'application/json' } },
-      )
+      return jsonResponse({ error: 'validation', message: 'Request too large.' }, 413)
     }
 
     const body = await request.json() as { conceptA?: string; conceptB?: string }
     const { conceptA, conceptB } = body
 
     if (!conceptA || !conceptB || typeof conceptA !== 'string' || typeof conceptB !== 'string') {
-      return new Response(
-        JSON.stringify({ error: 'validation', message: 'Both concepts are required.' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } },
-      )
+      return jsonResponse({ error: 'validation', message: 'Both concepts are required.' }, 400)
     }
 
     const a = conceptA.trim()
     const b = conceptB.trim()
 
     if (a.length > 50 || b.length > 50) {
-      return new Response(
-        JSON.stringify({ error: 'validation', message: 'Each concept must be 50 characters or fewer.' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } },
-      )
+      return jsonResponse({ error: 'validation', message: 'Each concept must be 50 characters or fewer.' }, 400)
     }
 
     if (a.toLowerCase() === b.toLowerCase()) {
-      return new Response(
-        JSON.stringify({ error: 'validation', message: 'Concepts must be different.' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } },
-      )
+      return jsonResponse({ error: 'validation', message: 'Concepts must be different.' }, 400)
     }
 
     if (isBlocked(a) || isBlocked(b)) {
-      return new Response(
-        JSON.stringify({
-          error: 'blocked',
-          message: 'This subject is classified beyond our clearance level. Try something else.',
-        }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } },
-      )
+      return jsonResponse({
+        error: 'blocked',
+        message: 'This subject is classified beyond our clearance level. Try something else.',
+      }, 400)
     }
 
     // Call Claude API
@@ -245,25 +235,16 @@ export default async (request: Request) => {
 
     const validated = validateResponse(parsed)
 
-    return new Response(JSON.stringify(validated), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    })
+    return jsonResponse(validated)
   } catch (error) {
     console.error('Generate function error:', error)
 
-    const message = error instanceof Error ? error.message : 'Unknown error'
-    const isValidation = message.includes('node ') || message.includes('chain must') || message.includes('missing ')
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    const isValidation = errorMessage.includes('node ') || errorMessage.includes('chain must') || errorMessage.includes('missing ')
 
-    return new Response(
-      JSON.stringify({
-        error: isValidation ? 'invalid_response' : 'server_error',
-        message: 'Our sources indicate this investigation has been shut down. Try different subjects.',
-      }),
-      {
-        status: isValidation ? 502 : 500,
-        headers: { 'Content-Type': 'application/json' },
-      },
-    )
+    return jsonResponse({
+      error: isValidation ? 'invalid_response' : 'server_error',
+      message: 'Our sources indicate this investigation has been shut down. Try different subjects.',
+    }, isValidation ? 502 : 500)
   }
 }

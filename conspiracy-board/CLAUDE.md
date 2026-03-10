@@ -220,8 +220,8 @@ board ──(new investigation)──→ landing ←─────────�
 
 ## Known Bugs (Unfixed)
 
-- **BUG-002: AbortController signal not wired** — `App.tsx` creates an `AbortController` and calls `.abort()`, but the signal is never passed to `generateConspiracy()` or `fetch()` in `api.ts`. Request cancellation is a no-op. Stale API responses can arrive after the user navigated away. Fix: add optional `signal` param to `generateConspiracy()` and pass to `fetch()`.
-- **BUG-003: Unicode blocklist bypass** — `normalizeInput()` only handles ASCII leet-speak and separator characters. It does NOT handle: zero-width characters (`h\u200Bi\u200Bt\u200Bl\u200Be\u200Br`), Unicode confusables (Cyrillic `і` vs Latin `i`), fullwidth characters (`ｈｉｔｌｅｒ`), or combining marks. These are real bypass vectors in both client and server blocklists. Fix: strip zero-width chars, apply NFKD normalization, strip combining marks — in BOTH `blocklist.ts` and `generate.ts`.
+- ~~**BUG-002: AbortController signal not wired**~~ — **FIXED** in security audit 2026-03-10. Signal now passed through `generateConspiracy()` to `fetch()`.
+- ~~**BUG-003: Unicode blocklist bypass**~~ — **FIXED** in security audit 2026-03-10. `normalizeInput()` now applies NFKD normalization, strips zero-width characters, and removes combining marks in both `blocklist.ts` and `generate.ts`.
 
 ## What's Not Implemented (P2)
 

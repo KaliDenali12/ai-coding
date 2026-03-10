@@ -7,7 +7,7 @@ Comedic AI-powered SPA: user enters two concepts, Claude generates a 7-node cons
 - **Always deploy after changes**: Push to `main` on GitHub; Netlify auto-deploys.
 - **Content safety is non-negotiable**: 3-layer safety (client blocklist, server blocklist, Claude system prompt). Every change touching AI output or user input must respect all three.
 - **No partial boards**: Board renders completely or shows a themed error. Never render a half-built chain.
-- **Run tests before committing**: `npm test` (263+ tests, all must pass).
+- **Run tests before committing**: `npm test` (267+ tests, all must pass).
 
 ## Tech Stack
 
@@ -34,6 +34,7 @@ conspiracy-board/
 │   │   ├── RedString.tsx          # SVG path with stroke-dash animation
 │   │   ├── CaseFileStamp.tsx      # Classification stamp overlay
 │   │   ├── ErrorScreen.tsx        # Themed error with retry
+│   │   ├── ErrorBoundary.tsx     # React Error Boundary — catches render crashes, shows ErrorScreen
 │   │   └── __tests__/             # Component tests (one per component)
 │   ├── lib/
 │   │   ├── api.ts                 # Client fetch + response validation
@@ -47,7 +48,7 @@ conspiracy-board/
 │   ├── test/
 │   │   └── setup.ts               # Vitest setup: jest-dom + SVG polyfill
 │   ├── App.tsx                    # Root: 4-state machine (landing → loading → board | error)
-│   ├── main.tsx                   # Entry point (StrictMode)
+│   ├── main.tsx                   # Entry point (StrictMode + ErrorBoundary)
 │   └── index.css                  # Tailwind @theme, custom CSS classes
 ├── netlify/
 │   └── functions/
@@ -72,7 +73,7 @@ npm run dev                # Vite dev server (port 5173)
 npx netlify dev            # Dev with Netlify Functions
 npm run build              # tsc -b && vite build → dist/
 npm run lint               # eslint (flat config, must pass)
-npm test                   # vitest run (263+ tests)
+npm test                   # vitest run (267+ tests)
 npm run test:watch         # vitest watch mode
 npx tsc --noEmit           # Type check only
 ```
@@ -176,6 +177,7 @@ No database. Single API response type — see `src/types/conspiracy.ts`:
 - Non-interactive elements with `onClick`: add `role="button"`, `tabIndex={0}`, `onKeyDown` (Enter + Space)
 - Icon-only buttons: `aria-label` required
 - Decorative elements: `alt=""` or `aria-hidden`
+- Error messages: `role="alert"` for screen reader announcement (already on ErrorScreen + LandingScreen)
 
 ## Key Pitfalls
 
@@ -194,6 +196,7 @@ No database. Single API response type — see `src/types/conspiracy.ts`:
 - **Animation timing**: Constants in `src/lib/constants.ts` control reveal sequence. Card delay, string duration, entrance time — all interconnected.
 - **Card dimensions**: Hardcoded in `Corkboard.tsx` — `200×280px` desktop, `150×210px` mobile (breakpoint: 768px).
 - **Seeded random**: Layout uses deterministic seeded random from case file number hash. Same inputs always produce same layout.
+- **ErrorBoundary**: Wraps `<App />` in `main.tsx`. Catches render crashes and shows `ErrorScreen` with recovery. Class component (React requirement for error boundaries).
 
 ## Common Recipes
 
@@ -261,3 +264,4 @@ board ──(new investigation)──→ landing ←─────────�
 | `content-safety.md` | Blocklist, system prompt, safety layers |
 | `api-and-data.md` | Generate endpoint, Claude API, response validation |
 | `feature-inventory.md` | Component responsibilities, what's built vs planned |
+| `docs/ERROR_MESSAGES.md` | Error message inventory, style guide, tone conventions |

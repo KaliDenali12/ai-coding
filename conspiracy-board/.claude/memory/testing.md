@@ -21,7 +21,7 @@ npm run test:coverage # vitest with coverage
 - App integration: `src/__tests__/App.test.tsx`, `src/__tests__/App-integration-deep.test.tsx`
 - Server function: `netlify/functions/__tests__/generate.test.ts`, `generate-handler.test.ts` (3 unique edge cases only)
 - API contract: `netlify/functions/__tests__/generate-contract.test.ts` (49 tests)
-- Audit reports: `audit-reports/TEST_COVERAGE_REPORT_001_2026-03-10.md`, `TEST_HARDENING_REPORT_01_2026-03-10.md`, `TEST_ARCHITECTURE_REPORT_001_2026-03-10.md`, `TEST_CONSOLIDATION_REPORT_001_2026-03-10.md`
+- Audit reports: `audit-reports/TEST_COVERAGE_REPORT_001_2026-03-10.md`, `TEST_HARDENING_REPORT_01_2026-03-10.md`, `TEST_ARCHITECTURE_REPORT_001_2026-03-10.md`, `TEST_CONSOLIDATION_REPORT_001_2026-03-10.md`, `TEST_QUALITY_REPORT_001_2026-03-10.md`
 
 ## Known Antipatterns (from Architecture Audit)
 

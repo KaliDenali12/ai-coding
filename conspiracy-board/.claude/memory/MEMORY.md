@@ -5,7 +5,8 @@ Conspiracy Board: comedic AI web app connecting two concepts via a 7-node conspi
 ## Current State
 
 - **Test count**: 272 tests across 23 files (0 skipped). Post-consolidation: ~43 duplicates removed, ~27 decorative remain.
-- **Audit reports**: `audit-reports/TEST_ARCHITECTURE_REPORT_001_2026-03-10.md`, `TEST_CONSOLIDATION_REPORT_001_2026-03-10.md` — see `testing.md` for antipatterns.
+- **Audit reports**: `audit-reports/TEST_ARCHITECTURE_REPORT_001_2026-03-10.md`, `TEST_CONSOLIDATION_REPORT_001_2026-03-10.md`, `TEST_QUALITY_REPORT_001_2026-03-10.md` — see `testing.md` for antipatterns.
+- **Known bugs**: BUG-002 (AbortController signal not wired to fetch), BUG-003 (Unicode blocklist bypass). See CLAUDE.md "Known Bugs" and `content-safety.md`.
 - **Deploy URL**: TBD (needs Netlify setup + `ANTHROPIC_API_KEY`)
 - **Status**: All P0/P1 features complete. P2 remaining: share/export, sound effects.
 - **Branch**: `master`

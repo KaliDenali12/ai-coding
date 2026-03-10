@@ -56,6 +56,22 @@ Fixed by splitting `normalizeInput()` regex into two steps:
 **Important**: A naive "replace all separators with empty string" breaks multi-word blocked terms.
 Applied to BOTH `blocklist.ts` and `generate.ts`. Separator bypass test re-enabled.
 
+## BUG-003: Unicode Blocklist Bypass (UNFIXED)
+
+`normalizeInput()` handles ASCII leet-speak and separator characters but NOT:
+- **Zero-width chars**: `h\u200Bi\u200Bt\u200Bl\u200Be\u200Br` → invisible joiners not stripped → bypass
+- **Unicode confusables**: Cyrillic `а` (U+0430) vs Latin `a` → `hіtler` with Cyrillic `і` → bypass
+- **Fullwidth chars**: `ｈｉｔｌｅｒ` (U+FF48 etc.) → bypass
+- **Combining marks**: `ḣitler` → bypass
+
+**Fix approach**: Before leet-speak substitution, apply:
+1. Strip zero-width characters: `[\u200B\u200C\u200D\uFEFF]`
+2. NFKD normalize (decomposes fullwidth + strips compatibility forms)
+3. Strip combining diacritical marks: `[\u0300-\u036f]`
+4. Apply to BOTH `blocklist.ts` and `generate.ts`
+
+Discovered in test quality audit (2026-03-10). See `audit-reports/TEST_QUALITY_REPORT_001_2026-03-10.md`.
+
 ## Testing Safety Changes
 After modifying blocklist or system prompt:
 - Run `npm test` (blocklist tests in `src/lib/__tests__/blocklist.test.ts` and `blocklist-deep.test.ts`)

@@ -15,6 +15,16 @@ import {
   REVEAL_CARD_ENTRANCE_MS,
 } from '@/lib/constants.ts'
 
+const STEP_DURATION = REVEAL_CARD_ENTRANCE_MS + REVEAL_STRING_DURATION_MS
+
+function getCardDelay(index: number): number {
+  return index * STEP_DURATION + REVEAL_CARD_DELAY_MS
+}
+
+function getStringDelay(index: number): number {
+  return index * STEP_DURATION + REVEAL_CARD_DELAY_MS + REVEAL_CARD_ENTRANCE_MS
+}
+
 interface CorkboardProps {
   data: ConspiracyChain
   onNewInvestigation: () => void
@@ -62,29 +72,10 @@ export function Corkboard({ data, onNewInvestigation }: CorkboardProps) {
     [viewportSize, boardHeight, cardWidth, cardHeight, data.chain.length, isMobile, data.case_file_number],
   )
 
-  // Calculate timing for reveal sequence
-  const getCardDelay = useCallback(
-    (index: number) => {
-      // Each card appears after: previous card entrance + string draw time
-      const stepDuration = REVEAL_CARD_ENTRANCE_MS + REVEAL_STRING_DURATION_MS
-      return index * stepDuration + REVEAL_CARD_DELAY_MS
-    },
-    [],
-  )
-
-  const getStringDelay = useCallback(
-    (index: number) => {
-      // String starts drawing after its source card finishes entering
-      const stepDuration = REVEAL_CARD_ENTRANCE_MS + REVEAL_STRING_DURATION_MS
-      return index * stepDuration + REVEAL_CARD_DELAY_MS + REVEAL_CARD_ENTRANCE_MS
-    },
-    [],
-  )
-
   // Mark reveal complete after all animations finish
   useEffect(() => {
     const totalDuration =
-      data.chain.length * (REVEAL_CARD_ENTRANCE_MS + REVEAL_STRING_DURATION_MS) +
+      data.chain.length * STEP_DURATION +
       REVEAL_CARD_DELAY_MS +
       500 // Extra buffer for stamp
     const timer = setTimeout(() => setRevealComplete(true), totalDuration)

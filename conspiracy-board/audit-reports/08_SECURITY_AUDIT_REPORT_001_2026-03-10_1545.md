@@ -47,6 +47,9 @@ The Conspiracy Board codebase has a **strong security posture** for a stateless 
 | 2 | Missing security headers | **Medium** | `netlify.toml` | Added X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, CSP | Yes (272/272) | Manual review |
 | 3 | AbortController signal not wired (BUG-002) | **High** | `api.ts:58-65`, `App.tsx:24-27` | Added optional `signal` param to `generateConspiracy()`, wired from `AbortController` in `App.tsx` | Yes (272/272) | Manual review |
 | 4 | Request body size not limited | **Low** | `generate.ts:157-162` | Added Content-Length check (max 10KB) before JSON parsing, returns 413 | Yes (272/272) | Manual review |
+| 5 | Cyrillic/Greek confusable bypass | **Medium** | `blocklist.ts`, `generate.ts` | Added 30-char CONFUSABLES mapping table for Cyrillic/Greek → Latin transliteration | Yes (272/272) | Manual review |
+| 6 | No security scanning in CI/CD | **Medium** | `netlify.toml` | Added `npm audit --audit-level=high` to build command | Yes (272/272) | Manual review |
+| 7 | No install script restrictions | **Low** | `.npmrc` (new file) | Added `ignore-scripts=true`; build command runs `npm rebuild esbuild` | Yes (272/272) | Manual review |
 
 ### Fix Details
 
@@ -122,16 +125,9 @@ None. The only critical finding (Unicode blocklist bypass) was fixed.
 **Effort:** Quick fix once the domain is known
 **Detected By:** Manual review
 
-### MED-002: Cyrillic Confusable Bypass Still Possible
+### ~~MED-002: Cyrillic Confusable Bypass~~ — FIXED
 
-**Severity:** Medium
-**Location:** `blocklist.ts:39-55`, `generate.ts:26-40`
-**Description:** While NFKD normalization handles fullwidth chars and combining marks, it does NOT map Cyrillic confusables to Latin equivalents (e.g., Cyrillic `а` (U+0430) → Latin `a`). NFKD decomposes characters but doesn't transliterate across scripts.
-**Impact:** A determined attacker could use Cyrillic lookalike characters to bypass the blocklist. However, this is a narrow attack vector — the attacker must know which specific Cyrillic characters map to Latin ones.
-**Recommendation:** Add a confusables mapping table for common Latin↔Cyrillic/Greek pairs, or use a Unicode confusables library.
-**Why It Wasn't Fixed:** Requires a substantial mapping table or third-party library. The system prompt (Layer 3) provides a backstop.
-**Effort:** Moderate
-**Detected By:** Manual review
+Moved to Fixes Applied table (Fix #5). Added 30-character CONFUSABLES mapping table covering Cyrillic and Greek lookalike characters.
 
 ### MED-003: Console.error Logs Internal Error Messages
 
@@ -148,22 +144,16 @@ None. The only critical finding (Unicode blocklist bypass) was fixed.
 
 ## 7. Low Findings (Unfixed)
 
-### LOW-001: No .npmrc with ignore-scripts
+### ~~LOW-001: No .npmrc with ignore-scripts~~ — FIXED
 
-**Severity:** Low
-**Location:** Project root (missing file)
-**Description:** No `.npmrc` file with `ignore-scripts=true`. Two dependencies have install scripts: `esbuild` (build tool, legitimate) and `fsevents` (macOS file watcher, legitimate). Both are well-known packages, but the lack of script restrictions means a compromised dependency could run arbitrary code on `npm install`.
-**Recommendation:** Add `.npmrc` with `ignore-scripts=true` and run `npm rebuild esbuild` after installs. Document that esbuild needs its postinstall script.
-**Why It Wasn't Fixed:** Would change the install workflow for all contributors. Needs team discussion.
-**Effort:** Quick fix
-**Detected By:** Manual review
+Moved to Fixes Applied table (Fix #7). Added `.npmrc` with `ignore-scripts=true` and `npm rebuild esbuild` to the build command.
 
 ---
 
 ## 8. Informational
 
-### INFO-001: No Security Scanning in CI/CD
-The project deploys via Netlify auto-deploy with no security checks. Consider adding `npm audit` and a SAST tool (Semgrep) to the build pipeline.
+### ~~INFO-001: No Security Scanning in CI/CD~~ — FIXED
+Added `npm audit --audit-level=high` to the Netlify build command. Builds now fail on high/critical advisories. Consider adding Semgrep for SAST coverage.
 
 ### INFO-002: Single Dependency for AI (Anthropic SDK)
 The `@anthropic-ai/sdk` package is the only runtime dependency with network access. It's well-maintained by Anthropic. No supply chain concerns identified.
@@ -234,4 +224,5 @@ No concerns identified. Key dependencies are maintained by:
 | `src/lib/api.ts` | AbortSignal parameter |
 | `src/App.tsx` | Pass AbortSignal to API call |
 | `src/__tests__/App.test.tsx` | Updated test assertions for AbortSignal |
+| `.npmrc` | New file — `ignore-scripts=true` |
 | `CLAUDE.md` | Marked BUG-002 and BUG-003 as fixed |

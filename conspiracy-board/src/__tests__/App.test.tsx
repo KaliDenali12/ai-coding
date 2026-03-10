@@ -107,7 +107,7 @@ describe('App Integration', () => {
     })
   })
 
-  it('shows corkboard after successful API response', async () => {
+  it('shows corkboard with all 7 cards after successful API response', async () => {
     mockGenerateConspiracy.mockResolvedValue(mockChainData)
 
     const user = userEvent.setup()
@@ -119,6 +119,8 @@ describe('App Integration', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('corkboard')).toBeInTheDocument()
+      const cards = screen.getAllByTestId('polaroid-card')
+      expect(cards).toHaveLength(7)
     })
   })
 
@@ -171,22 +173,6 @@ describe('App Integration', () => {
     expect(mockGenerateConspiracy).toHaveBeenCalledWith({
       conceptA: 'Penguins',
       conceptB: 'IKEA',
-    })
-  })
-
-  it('renders all 7 cards on the corkboard', async () => {
-    mockGenerateConspiracy.mockResolvedValue(mockChainData)
-
-    const user = userEvent.setup()
-    render(<App />)
-
-    await user.type(screen.getByTestId('input-a'), 'Penguins')
-    await user.type(screen.getByTestId('input-b'), 'Pizza')
-    await user.click(screen.getByTestId('submit-button'))
-
-    await waitFor(() => {
-      const cards = screen.getAllByTestId('polaroid-card')
-      expect(cards).toHaveLength(7)
     })
   })
 

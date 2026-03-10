@@ -3,8 +3,6 @@
 ## Color Tokens (index.css @theme)
 ```css
 --color-cork: #b8956a        /* Board background */
---color-cork-dark: #8b6f47   /* Gradient accents */
---color-cork-light: #d4b896  /* Gradient accents */
 --color-string-red: #8B1A1A  /* Yarn strings */
 --color-polaroid-cream: #f5f0e1  /* Card photo area */
 --color-landing-bg: #0a0a0a  /* Dark screens */
@@ -67,4 +65,3 @@ Back: `bg-amber-50`, faint ruled lines (CSS gradient), briefing in `font-body`
 | `.cork-bg` | Cork texture via gradients |
 | `.cork-vignette` | Dark edge vignette |
 | `.animate-stamp` | CLASSIFIED stamp slam keyframe |
-| `.animate-draw-string` | SVG stroke drawing keyframe |

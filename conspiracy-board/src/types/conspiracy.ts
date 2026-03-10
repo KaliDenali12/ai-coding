@@ -30,8 +30,3 @@ export interface GenerateRequest {
   conceptA: string
   conceptB: string
 }
-
-export interface GenerateError {
-  error: string
-  message: string
-}

@@ -15,8 +15,6 @@
   --font-underground: "Rubik Glitch", system-ui;
 
   --color-cork: #b8956a;
-  --color-cork-dark: #8b6f47;
-  --color-cork-light: #d4b896;
   --color-string-red: #8B1A1A;
   --color-polaroid-cream: #f5f0e1;
   --color-landing-bg: #0a0a0a;
@@ -66,17 +64,6 @@ body {
   inset: 0;
   pointer-events: none;
   background: radial-gradient(ellipse at center, transparent 50%, rgba(0, 0, 0, 0.3) 100%);
-}
-
-/* String drawing animation */
-@keyframes draw-string {
-  to {
-    stroke-dashoffset: 0;
-  }
-}
-
-.animate-draw-string {
-  animation: draw-string 0.8s ease-in-out forwards;
 }
 
 /* CLASSIFIED stamp slam */

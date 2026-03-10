@@ -67,9 +67,9 @@ export async function generateConspiracy(
   })
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ message: 'Request failed' }))
+    const errorData = await response.json().catch(() => ({ message: 'The investigation could not be completed. Please try again.' }))
     throw new ApiError(
-      (errorData as { message?: string }).message ?? 'Request failed',
+      (errorData as { message?: string }).message ?? 'The investigation could not be completed. Please try again.',
       response.status,
     )
   }
@@ -78,7 +78,7 @@ export async function generateConspiracy(
   try {
     data = await response.json()
   } catch {
-    throw new ApiError('Invalid response from server', response.status)
+    throw new ApiError('Our server returned an unreadable response. Please try again.', response.status)
   }
   return validateChainResponse(data)
 }

@@ -76,7 +76,7 @@ describe('generateConspiracy', () => {
       await generateConspiracy({ conceptA: 'A', conceptB: 'B' })
     } catch (e) {
       expect(e).toBeInstanceOf(ApiError)
-      expect((e as ApiError).message).toBe('Request failed')
+      expect((e as ApiError).message).toBe('The investigation could not be completed. Please try again.')
       expect((e as ApiError).statusCode).toBe(500)
     }
   })

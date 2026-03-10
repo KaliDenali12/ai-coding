@@ -29,9 +29,11 @@ function App() {
       setScreen('board')
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') return
-      console.error('Generation failed:', error)
       if (error instanceof ApiError) {
-        console.error(`API error ${error.statusCode}: ${error.message}`)
+        console.error(`Generation failed: API returned ${error.statusCode} — ${error.message}`)
+      } else {
+        const message = error instanceof Error ? error.message : 'Unknown error'
+        console.error(`Generation failed: ${message}`)
       }
       setScreen('error')
     }

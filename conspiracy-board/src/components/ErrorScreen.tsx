@@ -64,6 +64,7 @@ export function ErrorScreen({ onRetry }: ErrorScreenProps) {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
+        role="alert"
         data-testid="error-message"
       >
         {errorVariant.message}

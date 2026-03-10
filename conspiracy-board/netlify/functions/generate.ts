@@ -242,14 +242,14 @@ export default async (request: Request): Promise<Response> => {
 
     return jsonResponse(validated)
   } catch (error) {
-    console.error('Generate function error:', error)
-
+    const errorName = error instanceof Error ? error.name : 'UnknownError'
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    console.error(`Generate function error: [${errorName}] ${errorMessage}`)
     const isValidation = errorMessage.includes('node ') || errorMessage.includes('chain must') || errorMessage.includes('missing ')
 
     return jsonResponse({
       error: isValidation ? 'invalid_response' : 'server_error',
-      message: 'Our sources indicate this investigation has been shut down. Try different subjects.',
+      message: 'Our sources indicate this investigation has been shut down. Please try again or investigate different subjects.',
     }, isValidation ? 502 : 500)
   }
 }

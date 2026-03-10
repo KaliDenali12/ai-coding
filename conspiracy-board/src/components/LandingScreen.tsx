@@ -123,6 +123,7 @@ export function LandingScreen({ onSubmit, initialA = '', initialB = '' }: Landin
           className="text-landing-accent font-typewriter text-sm mb-4 text-center max-w-lg"
           initial={{ opacity: 0, y: -5 }}
           animate={{ opacity: 1, y: 0 }}
+          role="alert"
           data-testid="error-message"
         >
           {error}

@@ -34,17 +34,17 @@ export const ERROR_MESSAGES: Array<{
 }> = [
   {
     heading: 'REDACTED',
-    message: 'The government has intercepted our files. Please try again.',
+    message: 'The government has intercepted our files. Hit "Try Again" or investigate different subjects.',
     style: 'redacted',
   },
   {
     heading: 'CONNECTION LOST',
-    message: "Connection to classified server lost. They know we're looking.",
+    message: "Connection to classified server lost. Try again — or pick different subjects if the problem persists.",
     style: 'flickering',
   },
   {
     heading: 'INVESTIGATION BLOCKED',
-    message: 'This investigation has been [REDACTED] by [REDACTED]. Retry?',
+    message: 'This investigation has been [REDACTED] by [REDACTED]. Hit "Try Again" to start a new inquiry.',
     style: 'classified',
   },
 ]

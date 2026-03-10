@@ -74,6 +74,11 @@ export async function generateConspiracy(
     )
   }
 
-  const data: unknown = await response.json()
+  let data: unknown
+  try {
+    data = await response.json()
+  } catch {
+    throw new ApiError('Invalid response from server', response.status)
+  }
   return validateChainResponse(data)
 }

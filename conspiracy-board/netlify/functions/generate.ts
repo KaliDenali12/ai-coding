@@ -168,7 +168,7 @@ function validateResponse(data: unknown): ChainResponse {
 }
 
 // --- Handler ---
-export default async (request: Request) => {
+export default async (request: Request): Promise<Response> => {
   if (request.method !== 'POST') {
     return jsonResponse({ error: 'method_not_allowed', message: 'Method not allowed' }, 405)
   }
@@ -179,7 +179,12 @@ export default async (request: Request) => {
       return jsonResponse({ error: 'validation', message: 'Request too large.' }, 413)
     }
 
-    const body = await request.json() as { conceptA?: string; conceptB?: string }
+    let body: { conceptA?: string; conceptB?: string }
+    try {
+      body = await request.json() as { conceptA?: string; conceptB?: string }
+    } catch {
+      return jsonResponse({ error: 'validation', message: 'Invalid JSON in request body.' }, 400)
+    }
     const { conceptA, conceptB } = body
 
     if (!conceptA || !conceptB || typeof conceptA !== 'string' || typeof conceptB !== 'string') {

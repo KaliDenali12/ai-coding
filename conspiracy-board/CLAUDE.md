@@ -179,6 +179,7 @@ No database. Single API response type — see `src/types/conspiracy.ts`:
 
 - **Tailwind v4**: No `tailwind.config.ts`. Colors/fonts defined in `@theme` block in `index.css`. Don't create a config file.
 - **Blocklist duplication**: `src/lib/blocklist.ts` and `netlify/functions/generate.ts` have separate copies. Update BOTH.
+- **Validation message divergence (intentional)**: Client `checkInputs()` uses themed messages ("Both fields are required.", "You can't investigate yourself...") while server `generate.ts` uses plain backstop messages ("Both concepts are required.", "Concepts must be different."). This is by design — the client shows user-facing copy, the server is a security fallback for direct API callers. Don't "fix" by making them match.
 - **Blocklist normalization pipeline**: `normalizeInput()` applies: (1) strip zero-width chars, (2) NFKD normalization (fullwidth→ASCII), (3) strip combining marks, (4) lowercase, (5) Cyrillic/Greek confusable→Latin mapping, (6) leet-speak substitution, (7) strip separators `[_.+-]+`, (8) collapse whitespace. Duplicated in both `blocklist.ts` and `generate.ts`.
 - **`.npmrc` has `ignore-scripts=true`**: Supply chain hardening. Netlify build command runs `npm rebuild esbuild` before build since esbuild needs its postinstall script.
 - **Security headers**: Configured in `netlify.toml` `[[headers]]` block — CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy.

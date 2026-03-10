@@ -44,6 +44,8 @@ conspiracy-board/
 │   │   └── __tests__/             # Lib tests
 │   ├── types/
 │   │   └── conspiracy.ts          # ConspiracyChain, ConspiracyNode, FontCategory, GenerateRequest
+│   ├── test/
+│   │   └── setup.ts               # Vitest setup: jest-dom + SVG polyfill
 │   ├── App.tsx                    # Root: 4-state machine (landing → loading → board | error)
 │   ├── main.tsx                   # Entry point (StrictMode)
 │   └── index.css                  # Tailwind @theme, custom CSS classes

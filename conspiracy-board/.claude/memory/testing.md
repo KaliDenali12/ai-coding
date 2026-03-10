@@ -3,7 +3,7 @@
 ## Setup
 - **Framework**: Vitest 3.x with jsdom environment
 - **Config**: `vitest.config.ts` — separate from vite config, includes `@/` alias
-- **Setup file**: `src/test/setup.ts` → imports `@testing-library/jest-dom/vitest`
+- **Setup file**: `src/test/setup.ts` → imports `@testing-library/jest-dom/vitest` + SVG `getTotalLength` polyfill
 - **Globals**: `true` (no need to import `describe`, `it`, `expect`)
 - **CSS**: `css: true` (CSS modules processed)
 
@@ -63,10 +63,7 @@ vi.mock('framer-motion', () => ({
 ```
 
 ### SVG getTotalLength
-jsdom doesn't implement SVG methods. Polyfill before RedString/Corkboard tests:
-```typescript
-SVGElement.prototype.getTotalLength = () => 500
-```
+jsdom doesn't implement SVG methods. Polyfilled globally in `src/test/setup.ts` via `Object.defineProperty` — **do NOT add per-file `beforeAll` polyfills** (they were consolidated into setup).
 
 ### API Module (App.test.tsx)
 ```typescript

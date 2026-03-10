@@ -29,7 +29,7 @@ Chain has exactly 7 items: item[0] = concept A, items[1-5] = intermediate steps,
 ### Error Responses
 | Status | Error Type | When |
 |--------|-----------|------|
-| 400 | `validation` | Missing/invalid inputs, same concepts |
+| 400 | `validation` | Missing/invalid inputs, same concepts, malformed JSON body |
 | 400 | `blocked` | Blocklisted content |
 | 405 | `method_not_allowed` | Non-POST method |
 | 413 | `validation` | Request body > 10KB |
@@ -43,8 +43,8 @@ All errors return `{ error, message }`. Message is always themed (never leaks ra
 ### generateConspiracy(request, signal?)
 - Fetches `/.netlify/functions/generate` (Netlify redirects `/api/*` in netlify.toml)
 - Optional `AbortSignal` parameter for request cancellation (wired from App.tsx)
-- On non-200: parses error JSON, throws `ApiError` with statusCode
-- On 200: parses JSON, validates via `validateChainResponse()`, returns typed data
+- On non-200: parses error JSON (with fallback), throws `ApiError` with statusCode
+- On 200: parses JSON (with try/catch — throws `ApiError` on malformed JSON), validates via `validateChainResponse()`, returns typed data
 
 ### validateChainResponse(data)
 - Validates: is object, chain is array of 7, each node has all required fields

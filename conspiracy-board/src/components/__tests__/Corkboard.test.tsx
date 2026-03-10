@@ -1,16 +1,8 @@
-import { describe, it, expect, vi, beforeAll } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent, act } from '@testing-library/react'
 import { Corkboard } from '../Corkboard.tsx'
 import type { ConspiracyChain } from '@/types/conspiracy.ts'
 import { FAIL_THRESHOLD_MS } from '@/lib/constants.ts'
-
-// Polyfill SVG methods for jsdom
-beforeAll(() => {
-  if (typeof SVGElement !== 'undefined') {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (SVGElement.prototype as any).getTotalLength = () => 500
-  }
-})
 
 vi.mock('framer-motion', () => ({
   motion: {

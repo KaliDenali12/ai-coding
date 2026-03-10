@@ -1,14 +1,6 @@
-import { describe, it, expect, vi, beforeAll, afterEach } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen, act } from '@testing-library/react'
 import { RedString } from '../RedString.tsx'
-
-// jsdom doesn't have SVGPathElement.getTotalLength — polyfill it
-beforeAll(() => {
-  if (typeof SVGElement !== 'undefined') {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (SVGElement.prototype as any).getTotalLength = () => 500
-  }
-})
 
 afterEach(() => {
   vi.useRealTimers()

@@ -4,8 +4,8 @@ Conspiracy Board: comedic AI web app connecting two concepts via a 7-node conspi
 
 ## Current State
 
-- **Test count**: 315 tests across 24 files (0 skipped). ~200 unique behavioral, ~55 duplicate pairs, ~27 decorative.
-- **Test architecture audit**: `audit-reports/TEST_ARCHITECTURE_REPORT_001_2026-03-10.md` — see `testing.md` for critical antipatterns to avoid.
+- **Test count**: 272 tests across 23 files (0 skipped). Post-consolidation: ~43 duplicates removed, ~27 decorative remain.
+- **Audit reports**: `audit-reports/TEST_ARCHITECTURE_REPORT_001_2026-03-10.md`, `TEST_CONSOLIDATION_REPORT_001_2026-03-10.md` — see `testing.md` for antipatterns.
 - **Deploy URL**: TBD (needs Netlify setup + `ANTHROPIC_API_KEY`)
 - **Status**: All P0/P1 features complete. P2 remaining: share/export, sound effects.
 - **Branch**: `master`

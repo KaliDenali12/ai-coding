@@ -9,7 +9,7 @@
 
 ## Commands
 ```bash
-npm test              # vitest run (315+ tests)
+npm test              # vitest run (272+ tests)
 npm run test:watch    # vitest watch mode
 npm run test:coverage # vitest with coverage
 ```
@@ -19,9 +19,9 @@ npm run test:coverage # vitest with coverage
 - Component tests: `src/components/__tests__/*.test.tsx` (incl. CaseFileStamp)
 - Lib tests: `src/lib/__tests__/*.test.ts` (incl. cn, deep api/blocklist/layout/fonts tests)
 - App integration: `src/__tests__/App.test.tsx`, `src/__tests__/App-integration-deep.test.tsx`
-- Server function: `netlify/functions/__tests__/generate.test.ts`, `generate-handler.test.ts`
+- Server function: `netlify/functions/__tests__/generate.test.ts`, `generate-handler.test.ts` (3 unique edge cases only)
 - API contract: `netlify/functions/__tests__/generate-contract.test.ts` (49 tests)
-- Audit reports: `audit-reports/TEST_COVERAGE_REPORT_001_2026-03-10.md`, `TEST_HARDENING_REPORT_01_2026-03-10.md`, `TEST_ARCHITECTURE_REPORT_001_2026-03-10.md`
+- Audit reports: `audit-reports/TEST_COVERAGE_REPORT_001_2026-03-10.md`, `TEST_HARDENING_REPORT_01_2026-03-10.md`, `TEST_ARCHITECTURE_REPORT_001_2026-03-10.md`, `TEST_CONSOLIDATION_REPORT_001_2026-03-10.md`
 
 ## Known Antipatterns (from Architecture Audit)
 
@@ -31,8 +31,7 @@ npm run test:coverage # vitest with coverage
 - **`Corkboard.test.tsx > 'does not flip cards during reveal'` has ZERO assertions** — always passes.
 
 ### High — Avoid Repeating
-- **`generate-handler.test.ts` is ~95% duplicate of `generate-contract.test.ts`** (~15 overlapping tests). Don't add tests to handler file; use contract file.
-- **Every `-deep` test file duplicates ~60% of its base file** (blocklist, layout, api, fonts). ~55 duplicate test pairs total. When adding tests, check the base file first.
+- **Consolidation completed (2026-03-10)**: 43 duplicate tests removed. `generate-handler.test.ts` trimmed to 3 unique tests; `fonts.test.ts` deleted; shallow files (`blocklist.test.ts`, `layout.test.ts`, `api.test.ts`) trimmed to unique-only tests. **Rule**: Don't add tests to shallow files if the `-deep` or `-contract` file already covers that behavior. Check the deep file first.
 - **Framer-motion mock is copy-pasted across 10 test files** (~50 lines each). Should be extracted to shared setup but hasn't been yet. If you change the mock pattern, you must update all 10 files.
 - **`ApiError` class is re-implemented in 3 test files** (App.test, smoke.test, App-integration-deep.test) instead of imported. Could diverge from production class.
 
@@ -40,7 +39,7 @@ npm run test:coverage # vitest with coverage
 - ~27 tests are decorative: `cn.test.ts` tests third-party libs, `constants.test.ts` tests static data, font map tests duplicate TypeScript type checking, 5 "renders the X" tests only check `data-testid` exists.
 - SVG path string parsing in `layout-deep.test.ts` is fragile (splits by index).
 - RedString tests assert exact CSS attribute values (`opacity`, `stroke`).
-- Effective unique behavioral tests: ~200 out of 315 reported.
+- Post-consolidation: ~245 unique behavioral tests out of 272 reported (~27 decorative remain).
 
 ## Mocking Patterns
 

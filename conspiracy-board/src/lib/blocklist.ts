@@ -37,7 +37,13 @@ const SUBSTITUTIONS: Record<string, string> = {
 }
 
 function normalizeInput(input: string): string {
-  let normalized = input.toLowerCase().trim()
+  // Strip zero-width characters (joiners, non-joiners, zero-width spaces, etc.)
+  let normalized = input.replace(/[\u200B-\u200F\u2028-\u202F\u2060\uFEFF]/g, '')
+  // NFKD normalization: decomposes fullwidth chars (ｈ→h) and ligatures
+  normalized = normalized.normalize('NFKD')
+  // Strip combining marks (diacritics, underlines, overlines, etc.)
+  normalized = normalized.replace(/[\u0300-\u036F]/g, '')
+  normalized = normalized.toLowerCase().trim()
   for (const [char, replacement] of Object.entries(SUBSTITUTIONS)) {
     normalized = normalized.replaceAll(char, replacement)
   }

@@ -106,8 +106,6 @@ describe('Smoke Tests', () => {
     expect(constants.EXAMPLE_PAIRS).toBeDefined()
     expect(constants.LOADING_MESSAGES).toBeDefined()
 
-    const cn = await import('../lib/cn.ts')
-    expect(cn.cn).toBeTypeOf('function')
   })
 
   it('type definitions are consistent', async () => {

@@ -21,7 +21,26 @@ npm run test:coverage # vitest with coverage
 - App integration: `src/__tests__/App.test.tsx`, `src/__tests__/App-integration-deep.test.tsx`
 - Server function: `netlify/functions/__tests__/generate.test.ts`, `generate-handler.test.ts`
 - API contract: `netlify/functions/__tests__/generate-contract.test.ts` (49 tests)
-- Audit reports: `audit-reports/TEST_COVERAGE_REPORT_001_2026-03-10.md`, `TEST_HARDENING_REPORT_01_2026-03-10.md`
+- Audit reports: `audit-reports/TEST_COVERAGE_REPORT_001_2026-03-10.md`, `TEST_HARDENING_REPORT_01_2026-03-10.md`, `TEST_ARCHITECTURE_REPORT_001_2026-03-10.md`
+
+## Known Antipatterns (from Architecture Audit)
+
+### Critical — Fix Before Writing New Tests
+- **`generate.test.ts` tests a LOCAL copy of `validateResponse`**, not the production function. 7 tests validate a re-implemented copy. If production code changes, these tests still pass. Import and test the real function.
+- **`api-generate.test.ts` has `expect()` in catch blocks without `expect.assertions(N)`** — 2 tests can silently pass with zero assertions if the function stops throwing. Always use `expect.assertions()` when assertions are in conditional paths.
+- **`Corkboard.test.tsx > 'does not flip cards during reveal'` has ZERO assertions** — always passes.
+
+### High — Avoid Repeating
+- **`generate-handler.test.ts` is ~95% duplicate of `generate-contract.test.ts`** (~15 overlapping tests). Don't add tests to handler file; use contract file.
+- **Every `-deep` test file duplicates ~60% of its base file** (blocklist, layout, api, fonts). ~55 duplicate test pairs total. When adding tests, check the base file first.
+- **Framer-motion mock is copy-pasted across 10 test files** (~50 lines each). Should be extracted to shared setup but hasn't been yet. If you change the mock pattern, you must update all 10 files.
+- **`ApiError` class is re-implemented in 3 test files** (App.test, smoke.test, App-integration-deep.test) instead of imported. Could diverge from production class.
+
+### Low — Awareness
+- ~27 tests are decorative: `cn.test.ts` tests third-party libs, `constants.test.ts` tests static data, font map tests duplicate TypeScript type checking, 5 "renders the X" tests only check `data-testid` exists.
+- SVG path string parsing in `layout-deep.test.ts` is fragile (splits by index).
+- RedString tests assert exact CSS attribute values (`opacity`, `stroke`).
+- Effective unique behavioral tests: ~200 out of 315 reported.
 
 ## Mocking Patterns
 

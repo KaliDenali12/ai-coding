@@ -6,8 +6,11 @@ import App from '../App.tsx'
 // Polyfill SVG methods for jsdom
 beforeAll(() => {
   if (typeof SVGElement !== 'undefined') {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (SVGElement.prototype as any).getTotalLength = () => 500
+    Object.defineProperty(SVGElement.prototype, 'getTotalLength', {
+      value: () => 500,
+      writable: true,
+      configurable: true,
+    })
   }
 })
 

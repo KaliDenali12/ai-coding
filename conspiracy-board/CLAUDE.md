@@ -1,309 +1,246 @@
 # Conspiracy Board — AI Codebase Guide
 
-A comedic, AI-powered single-page web app that generates elaborate conspiracy theories connecting any two unrelated concepts, displayed on an interactive animated corkboard with Polaroid-style cards, red string animations, and deadpan investigative-journalist prose. Desktop-first, no auth, no database, fully ephemeral.
+Comedic AI-powered SPA: user enters two concepts, Claude generates a 7-node conspiracy chain, displayed on an animated corkboard with Polaroid cards and red string. Desktop-first, no auth, no database, fully ephemeral.
 
 ## Workflow Rules
 
-- **Always deploy after changes**: Push to `main` on GitHub; Netlify auto-deploys. Verify the deploy preview before merging PRs.
-- **Content safety is non-negotiable**: Every change touching AI output, input handling, or user-facing text must respect the 3-layer safety system (input blocklist, system prompt constraints, Claude's built-in safety).
-- **No partial boards**: The board either renders completely or shows a themed error. Never render a half-built conspiracy chain.
+- **Always deploy after changes**: Push to `main` on GitHub; Netlify auto-deploys.
+- **Content safety is non-negotiable**: 3-layer safety (client blocklist, server blocklist, Claude system prompt). Every change touching AI output or user input must respect all three.
+- **No partial boards**: Board renders completely or shows a themed error. Never render a half-built chain.
+- **Run tests before committing**: `npm test` (120 tests, all must pass).
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Frontend | React 19, TypeScript, Vite, Tailwind CSS, Shadcn/UI |
-| Animation | Framer Motion (reveal sequence, transitions, hover), CSS 3D transforms (card flip), SVG stroke-dash (red strings) |
-| Backend | Netlify Functions (single serverless function as Claude API proxy) |
-| Database | None — fully ephemeral, no persistence |
-| Storage | None |
-| Auth | None |
-| AI — Text | Anthropic Claude Sonnet (via Netlify Function proxy) |
-| AI — Images | None — emoji + dynamic fonts replace generated images |
-| External APIs | Claude API only |
-| Icons | TODO: Lucide React or similar (if needed) |
-| Fonts | Google Fonts (12+ fonts: typewriter, handwritten, 9 dynamic mood fonts, sans-serif) |
-| CSS Utility | Tailwind CSS (clsx + tailwind-merge via cn() helper from Shadcn) |
-| Testing | TODO: Vitest (not in initial scope per PRD, but recommended) |
+| Layer | Technology | Version |
+|-------|-----------|---------|
+| Frontend | React, TypeScript, Vite | 19, 5.9, 7.3 |
+| Styling | Tailwind CSS v4 | 4.x (`@theme` in CSS, no config file) |
+| Animation | Framer Motion + CSS 3D + SVG stroke-dash | 12.x |
+| Backend | Netlify Functions (single serverless endpoint) | — |
+| AI | Anthropic Claude Sonnet via `@anthropic-ai/sdk` | 0.78 |
+| Testing | Vitest + Testing Library + jsdom | 3.x |
+| CSS Utility | clsx + tailwind-merge via `cn()` | — |
 
 ## Project Structure
 
 ```
 conspiracy-board/
-├── public/
-│   ├── cork-texture.jpg              # Corkboard background texture
-│   └── sounds/                       # Optional sound effect files (P2)
 ├── src/
 │   ├── components/
-│   │   ├── ui/                       # Shadcn/UI components (Input, Button, Toggle, Tooltip)
-│   │   ├── LandingScreen.tsx         # Dark input screen with fields, chips, submit
-│   │   ├── LoadingScreen.tsx         # CLASSIFIED stamps, redacted text, flickering messages
-│   │   ├── Corkboard.tsx            # Board container, layout engine
-│   │   ├── PolaroidCard.tsx         # Individual Polaroid with flip interaction
-│   │   ├── RedString.tsx            # SVG Bezier path with stroke-dash animation
-│   │   ├── RevealSequence.tsx       # Animation orchestrator (6-10s timeline)
-│   │   ├── CaseFileStamp.tsx        # Decorative stamp flourish (P2)
-│   │   ├── ErrorScreen.tsx          # Themed error states with retry
-│   │   └── SoundToggle.tsx          # Mute/unmute button (P2)
+│   │   ├── LandingScreen.tsx      # Dark input screen, example chips, validation
+│   │   ├── LoadingScreen.tsx      # CLASSIFIED stamp, redacted lines, timeout
+│   │   ├── Corkboard.tsx          # Board container, layout, reveal orchestration
+│   │   ├── PolaroidCard.tsx       # Card with 3D flip (front: emoji+teaser, back: briefing)
+│   │   ├── RedString.tsx          # SVG path with stroke-dash animation
+│   │   ├── CaseFileStamp.tsx      # Classification stamp overlay
+│   │   ├── ErrorScreen.tsx        # Themed error with retry
+│   │   └── __tests__/             # Component tests (one per component)
 │   ├── lib/
-│   │   ├── api.ts                   # Client-side fetch to /api/generate
-│   │   ├── fonts.ts                 # font_category -> Google Font mapping
-│   │   ├── layout.ts               # Card position calculation (zigzag algorithm)
-│   │   ├── blocklist.ts            # Input blocklist (client-side pre-check)
-│   │   └── sound.ts                # Sound manager / Howler.js wrapper (P2)
+│   │   ├── api.ts                 # Client fetch + response validation
+│   │   ├── fonts.ts               # FontCategory → CSS font-family mapping
+│   │   ├── layout.ts              # Card positioning (zigzag + seeded random)
+│   │   ├── blocklist.ts           # Client-side input blocklist
+│   │   ├── constants.ts           # Example pairs, loading messages, timing values
+│   │   ├── cn.ts                  # Tailwind merge utility
+│   │   └── __tests__/             # Lib tests
 │   ├── types/
-│   │   └── conspiracy.ts           # TypeScript types for chain data structure
-│   ├── App.tsx                      # Root component, 3-state machine (input -> loading -> board)
-│   ├── main.tsx                     # Entry point
-│   └── index.css                    # Global styles, Tailwind directives, font imports
+│   │   └── conspiracy.ts          # ConspiracyChain, ConspiracyNode, FontCategory, GenerateRequest
+│   ├── App.tsx                    # Root: 4-state machine (landing → loading → board | error)
+│   ├── main.tsx                   # Entry point (StrictMode)
+│   └── index.css                  # Tailwind @theme, custom CSS classes
 ├── netlify/
 │   └── functions/
-│       └── generate.ts              # Claude API proxy: validate input, call API, validate response
-├── PRD.md/                          # Product requirements (5 documents)
-├── tailwind.config.ts
-├── tsconfig.json
-├── vite.config.ts
-├── package.json
-└── netlify.toml                     # Build config: npm run build, dist, netlify/functions
+│       ├── generate.ts            # Claude API proxy: validate → prompt → call → validate → respond
+│       └── __tests__/generate.test.ts
+├── PRD.md/                        # Product requirements (5 docs, reference only)
+├── index.html                     # Google Fonts preload (12 fonts)
+├── vite.config.ts                 # React + Tailwind plugins, @/ alias
+├── vitest.config.ts               # jsdom, globals, setup file
+├── netlify.toml                   # Build + redirect /api/* → functions
+└── package.json
 ```
 
 ## Build & Run Commands
 
 ```bash
-# Install dependencies
-npm install
-
-# Local development (Vite dev server)
-npm run dev
-
-# Local dev with Netlify Functions
-npx netlify dev
-
-# Build for production
-npm run build
-
-# Preview production build
-npm run preview
-
-# Type checking
-npx tsc --noEmit
-
-# Deploy (automatic on push to main via Netlify)
-git push origin main
+npm install                # Install dependencies
+npm run dev                # Vite dev server (port 5173)
+npx netlify dev            # Dev with Netlify Functions
+npm run build              # tsc -b && vite build → dist/
+npm test                   # vitest run (120 tests)
+npm run test:watch         # vitest watch mode
+npx tsc --noEmit           # Type check only
 ```
 
 ## Environment Variables
 
-### Backend — Secrets (Netlify dashboard)
-- `ANTHROPIC_API_KEY` — Claude API key (never exposed to client)
+| Variable | Where | Purpose |
+|----------|-------|---------|
+| `ANTHROPIC_API_KEY` | Netlify dashboard / `.env` local | Claude API key (never client-side) |
+
+No other env vars needed.
+
+## Architectural Rules
 
 ### Frontend
-- None required — all config is compile-time
-
-### Backend — Local Dev
-- `ANTHROPIC_API_KEY` — set in `.env` file (gitignored) or via `netlify env:set`
-
-## Key Architectural Rules
-
-### Frontend
-
-- **Path alias**: `@/` maps to `src/`
-- **CSS framework**: Tailwind CSS (check version — v4 uses `@theme` in CSS, not `tailwind.config.js`)
-- **Theme**: Two distinct modes — dark landing page (near-black) and warm corkboard (cork-brown). NOT a toggle; each screen has its own palette.
-- **State management**: React built-in only (useState, useReducer). No Zustand/Redux — app has only 3 states and 1 data object.
-- **Routing**: None — single-page with state-driven views (landing -> loading -> board)
-- **Sensitive operations**: `ANTHROPIC_API_KEY` stays server-side in Netlify Function. Client never touches it.
-- **Font loading**: All 12+ Google Fonts preloaded during landing page idle time. No font-swap flicker during board reveal.
+- **Path alias**: `@/` → `src/` (configured in vite, vitest, and tsconfig)
+- **Tailwind v4**: Uses `@theme` block in `index.css`. No `tailwind.config.ts` exists.
+- **State**: React built-in only (`useState`, `useCallback`, `useRef`). No external state libs.
+- **Routing**: None. Single page with state-driven views.
+- **Screens**: 4 states — `landing | loading | board | error`. Transitions via `AnimatePresence`.
+- **No Shadcn/UI components**: Despite early plans, all UI is custom HTML + Tailwind.
+- **Fonts**: 12 Google Fonts loaded via `<link>` in `index.html`. Custom CSS classes defined in `@theme`.
 
 ### Backend
+- **Single endpoint**: `POST /.netlify/functions/generate` (redirected from `/api/generate`)
+- **Flow**: Validate inputs → server-side blocklist → construct Claude prompt → call API → validate JSON → return
+- **Anthropic SDK**: Uses `new Anthropic()` which reads `ANTHROPIC_API_KEY` from env automatically
+- **Model**: `claude-sonnet-4-20250514` with `max_tokens: 4000`
+- **Response validation**: Chain must have exactly 7 items, each with title/emoji/font_category/teaser/briefing
+- **Error responses**: Themed messages, never leak raw API errors
 
-- **Single endpoint**: `POST /api/generate` — the only server-side route
-- **Init order**: Receive inputs -> blocklist validation -> construct Claude prompt -> call API -> validate JSON response structure -> return to client
-- **Secrets management**: Netlify environment variables, accessed via `process.env.ANTHROPIC_API_KEY`
-- **Response validation**: JSON must parse, chain array must have exactly 7 items, every item must have title/emoji/font_category/teaser/briefing, font_category must be from approved list
-- **Spending/rate limits**: None for MVP. Claude Sonnet at ~$0.003-0.008 per generation.
-- **Error responses**: Return appropriate HTTP status + themed error message, never leak API errors to client
+### Content Safety (3 Layers)
+1. **Client blocklist** (`src/lib/blocklist.ts`): Normalizes input (leet-speak substitution), checks against blocked terms
+2. **Server blocklist** (`netlify/functions/generate.ts`): Duplicated blocklist for server-side enforcement
+3. **System prompt**: Explicit safety rules in Claude prompt (no real politics, no real tragedies, no hate speech)
+
+> **Pitfall**: Blocklist is duplicated between client and server. Changes must be made in BOTH files.
+
+## Data Model
+
+No database. Single API response type — see `src/types/conspiracy.ts`:
+- `ConspiracyChain`: 7-item chain + case file number + classification level
+- `ConspiracyNode`: title, emoji, font_category, teaser, briefing
+- `FontCategory`: 9 values — `horror | corporate | ancient | chaotic | scientific | military | mystical | retro | underground`
+- Chain is exactly 7 items: concept A → 5 intermediate steps → concept B
 
 ## Conventions
 
-- **Imports**: Use `@/` alias with TypeScript path mapping
-- **Types**: API response types in `src/types/conspiracy.ts`, shared between client and function
-- **Components**: Named exports, one component per file, page-level components in `src/components/`
-- **UI primitives**: Use Shadcn/UI for Input, Button, Toggle, Tooltip. Everything else (Polaroid, corkboard, strings) is fully custom.
-- **Animation**: Framer Motion for orchestrated sequences and transitions. Raw CSS for 3D flip. Raw SVG for string drawing.
-- **Timestamps**: Not applicable (no database)
+- **Imports**: `@/` alias. Include `.ts`/`.tsx` extension in import paths.
+- **Components**: Named exports, one per file, in `src/components/`
+- **Tests**: Co-located in `__tests__/` dirs. One test file per source file. `data-testid` on all interactive elements.
+- **Animation**: Framer Motion for orchestrated reveals/transitions. Raw CSS for 3D card flip. Raw SVG for string drawing.
+- **Naming**: PascalCase components, camelCase functions/variables, SCREAMING_SNAKE constants.
 
-## Design System Standards
+## Design System (Do NOT Deviate)
 
-> Do NOT deviate from these values when writing new UI or editing existing UI.
+### Colors (defined in `index.css` `@theme`)
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--color-cork` | `#b8956a` | Corkboard background |
+| `--color-string-red` | `#8B1A1A` | Yarn-like connecting strings |
+| `--color-polaroid-cream` | `#f5f0e1` | Card photo area |
+| `--color-landing-bg` | `#0a0a0a` | Dark landing/error screens |
+| `--color-landing-accent` | `#c0392b` | Red accents, stamps, buttons |
 
-### Colors — Semantic Usage
-
-| Semantic | Token | Usage |
-|----------|-------|-------|
-| Cork background | warm browns/tans | Corkboard viewport fill |
-| Polaroid frame | white (#FFFFFF) | Card border, thick bottom strip |
-| Polaroid photo area | warm cream/aged yellow | Card interior (not pure white) |
-| String | deep red (~#8B1A1A) | Yarn-like connecting strings (not neon) |
-| Pin heads | red or gold | Push pin at top of each Polaroid |
-| Landing background | near-black | Dark detective office aesthetic |
-| Landing accents | red, typewriter ink | Headlines, stamps, emphasis |
-| Text (cards) | dark, near-black | Card titles and briefing text |
-| Text (landing) | white/off-white | Light text on dark background |
-| Error/stamp | red | CLASSIFIED, REDACTED stamps |
+### Typography (4 layers)
+| Layer | Font Variable | Usage |
+|-------|--------------|-------|
+| UI / landing | `--font-typewriter` (Special Elite) | Headlines, stamps, buttons |
+| Card titles | `--font-handwritten` (Caveat) | Bottom strip of Polaroids |
+| Card photo area | Dynamic per category (9 fonts) | Mood-matched by AI |
+| Briefing text | `--font-body` (Inter) | Readable paragraphs on card backs |
 
 ### Border Radius
-
-| Context | Class |
+| Context | Style |
 |---------|-------|
-| Polaroid cards | None (sharp corners — real Polaroids) |
+| Polaroid cards | None (sharp corners) |
 | Buttons, inputs | `rounded-lg` |
 | Chips | `rounded-full` |
 
-### Typography Strategy (4 layers)
-
-| Layer | Font | Usage |
-|-------|------|-------|
-| UI chrome / landing | Special Elite or Courier Prime (monospaced/typewriter) | Headlines, stamps, buttons, labels |
-| Polaroid title strip | Caveat or Indie Flower (handwritten) | Bottom strip of every card — consistent |
-| Polaroid photo area | Dynamic per card (9 categories) | Mood-matched font chosen by AI |
-| Briefing text (card back) | Inter or system sans-serif | Readable paragraphs on flipped cards |
-
-### Dynamic Font Categories
-
-| Category | Style | Example Font |
-|----------|-------|-------------|
-| horror | Heavy blackletter, dripping | Creepster, Nosifer |
-| corporate | Cold geometric sans-serif | Orbitron, Rajdhani |
-| ancient | Classical serif | Cinzel, IM Fell English |
-| chaotic | Messy handwriting | Permanent Marker, Rock Salt |
-| scientific | Monospaced/technical | Source Code Pro, IBM Plex Mono |
-| military | Stencil | Black Ops One |
-| mystical | Ornate decorative script | MedievalSharp, Uncial Antiqua |
-| retro | Vintage display | Bungee, Righteous |
-| underground | Grungy, punk-style | Rubik Glitch, Monoton |
-
 ### Spacing
-
 | Tier | Value | Usage |
 |------|-------|-------|
 | Tight | `gap-1` | Icon+text inline |
 | Standard | `gap-2` | Default element groups |
-| Comfortable | `gap-3` | Card sections, form fields |
+| Comfortable | `gap-3` / `gap-4` | Card sections, form fields |
 | Spacious | `gap-6` | Page sections |
 
 ### Padding
-
 | Context | Class |
 |---------|-------|
 | Card inner sections | `p-4` |
-| Page containers | `p-6` |
+| Page containers | `p-6` / `px-4` (mobile) |
 
-## Accessibility Standards
+### Two Palettes (NOT a toggle)
+- **Landing / Loading / Error screens**: `bg-landing-bg` (near-black), white text, red accents
+- **Corkboard**: `cork-bg` class (warm browns), white card frames, dark text
 
-### Interactive Elements
-Any non-interactive element with onClick must also have:
-`role="button"` `tabIndex={0}`
-`onKeyDown` handler for Enter and Space
-`focus-visible` outline styling
+## Accessibility
 
-### Icon-Only Buttons
-Must have `aria-label`
+- Non-interactive elements with `onClick`: add `role="button"`, `tabIndex={0}`, `onKeyDown` (Enter + Space)
+- Icon-only buttons: `aria-label` required
+- Decorative elements: `alt=""` or `aria-hidden`
 
-### Images
-Cork texture and decorative elements: `alt=""`
+## Key Pitfalls
 
-## Data Model
-
-No database. The only data structure is the API response:
-
-```typescript
-interface ConspiracyChain {
-  chain: ConspiracyNode[];        // Exactly 7 items
-  case_file_number: string;       // e.g., "CASE FILE #4471-B"
-  classification_level: string;   // e.g., "TOP SECRET", "EYES ONLY"
-}
-
-interface ConspiracyNode {
-  title: string;                  // 2-5 words, Polaroid bottom strip
-  emoji: string;                  // Single emoji, Polaroid photo area
-  font_category: FontCategory;    // One of 9 approved categories
-  teaser: string;                 // One sentence summary
-  briefing: string;               // 2-3 paragraphs, shown on card back
-}
-
-type FontCategory =
-  | "horror" | "corporate" | "ancient" | "chaotic" | "scientific"
-  | "military" | "mystical" | "retro" | "underground";
-```
-
-## Auth & Roles
-
-- No authentication
-- No user accounts
-- No roles
-- API key secured server-side in Netlify Function
-
-## Core Workflow
-
-1. User lands on dark input screen, types two concepts (or taps example chip)
-2. Client validates inputs (non-empty, different words, not blocklisted)
-3. Client POSTs to `/api/generate` with both concepts
-4. Netlify Function validates inputs server-side, calls Claude API with system prompt
-5. Claude returns structured JSON (7 nodes with titles, emojis, fonts, briefings)
-6. Function validates response structure, returns to client
-7. Loading screen transitions to corkboard
-8. Board reveal auto-animates: cards drop in, strings draw (6-10 seconds)
-9. User explores by flipping Polaroids to read briefings
-10. User taps "New Investigation" to restart
+- **Tailwind v4**: No `tailwind.config.ts`. Colors/fonts defined in `@theme` block in `index.css`. Don't create a config file.
+- **Blocklist duplication**: `src/lib/blocklist.ts` and `netlify/functions/generate.ts` have separate copies. Update BOTH.
+- **Import extensions**: This project uses `allowImportingTsExtensions` + `verbatimModuleSyntax`. Always include `.ts`/`.tsx` in imports.
+- **No public/ directory**: Cork texture is CSS-only (`cork-bg` class). No image files exist.
+- **Font loading**: All 12 fonts loaded in `index.html` `<link>`. Adding a font requires updating both the `<link>` tag and the `@theme` block.
+- **Animation timing**: Constants in `src/lib/constants.ts` control reveal sequence. Card delay, string duration, entrance time — all interconnected.
+- **Card dimensions**: Hardcoded in `Corkboard.tsx` — `200×280px` desktop, `150×210px` mobile (breakpoint: 768px).
+- **Seeded random**: Layout uses deterministic seeded random from case file number hash. Same inputs always produce same layout.
 
 ## Common Recipes
 
-### Adding a New Font Category
-1. Add category to `FontCategory` type in `src/types/conspiracy.ts`
-2. Add font mapping in `src/lib/fonts.ts`
-3. Add Google Font `<link>` to HTML head
-4. Update system prompt in `netlify/functions/generate.ts` to include new category
-5. Update validation in the function to accept the new category
+### Adding a Font Category
+1. Add to `FONT_CATEGORIES` array in `src/types/conspiracy.ts`
+2. Add mapping in `src/lib/fonts.ts` (both `FONT_MAP` and `FONT_CLASS_MAP`)
+3. Add `--font-{name}` in `index.css` `@theme` block
+4. Add Google Font to `<link>` in `index.html`
+5. Update system prompt in `netlify/functions/generate.ts`
 
-### Adding a New Example Chip
-1. Add pair to the examples array in `src/components/LandingScreen.tsx`
-2. Keep to 4-6 total chips — don't overcrowd
+### Adding Example Chips
+1. Add pair to `EXAMPLE_PAIRS` in `src/lib/constants.ts`
+2. Keep to 4-6 total
 
 ### Modifying the System Prompt
-1. Edit `netlify/functions/generate.ts`
-2. Test with diverse input pairs to verify tone, structure, and safety
-3. Validate that JSON output still matches `ConspiracyChain` type
+1. Edit `SYSTEM_PROMPT` in `netlify/functions/generate.ts`
+2. Test with diverse inputs for tone, structure, safety
+3. Validate JSON output still matches `ConspiracyChain`
 
-## What's Not Yet Implemented
+## App State Machine
 
-All P0 and P1 features are implemented. Remaining P2 items:
+```
+landing ──(submit)──→ loading ──(success)──→ board
+                         │                     │
+                         ├──(timeout/error)──→ error
+                         │                     │
+                         └──(abort)──→ (silent) ←──(retry)──┘
+                                                    │
+board ──(new investigation)──→ landing ←────────────┘
+```
 
-- **F-017 Share/Screenshot Export**: Image export (html2canvas), text-to-clipboard
-- **F-018 Sound Effects**: Pin-drop, string-stretch, paper-flip, typewriter-click (Howler.js)
-- **F-019 Case File Stamp**: DONE (implemented in CaseFileStamp.tsx)
+- `App.tsx` owns all state transitions via `useCallback` handlers
+- `AbortController` cancels in-flight requests on re-submit
+- Board data is held in `useState` — reset to `null` on "New Investigation"
 
-### Deployment
-- Netlify site needs to be created and linked
-- `ANTHROPIC_API_KEY` must be set in Netlify environment variables
+## What's Not Implemented (P2)
+
+- **F-017**: Share/screenshot export (html2canvas)
+- **F-018**: Sound effects (Howler.js)
+- Netlify site needs linking + `ANTHROPIC_API_KEY` in dashboard
 
 ## Documentation Hierarchy
 
-When you learn something worth preserving, put it in the right place:
-
 | Layer | Loaded | What goes here |
 |-------|--------|---------------|
-| **CLAUDE.md** (this file) | Every conversation | Rules/constraints that prevent mistakes on ANY task |
-| **Auto-memory MEMORY.md** | Every conversation | Cross-cutting patterns and pitfalls learned across sessions |
-| **Sub-memory files** (.claude/memory/) | On demand, by topic | Feature-specific deep dives — see topic table below |
-| **Inline code comments** | When code is read | Non-obvious "why" explanations, right next to the code |
+| **CLAUDE.md** (this file) | Every conversation | Rules preventing mistakes on ANY task |
+| **MEMORY.md** | Every conversation | Cross-cutting patterns, project state |
+| **Sub-memory** (`.claude/memory/`) | On demand | Feature-specific deep dives |
+| **Inline comments** | When code is read | Non-obvious "why" explanations |
 
-**Rule of thumb**: If it prevents mistakes on unrelated tasks -> CLAUDE.md. If it's a pattern/pitfall that spans features -> auto-memory. If it's only relevant when working on one feature -> sub-memory file. If it explains a single non-obvious line -> inline comment.
-
-**Updating docs**: When you change code that affects a rule in CLAUDE.md, update CLAUDE.md. When you change a feature covered by a sub-memory file, update that file. If a new feature area doesn't fit any existing file, create a new one and add it to the table below.
+**Rule**: Prevents mistakes on unrelated tasks → CLAUDE.md. Spans features → MEMORY.md. One feature only → sub-memory. Single line → inline comment.
 
 ### Sub-Memory Files — Load When Working On
 
 | File | When to load |
 |------|-------------|
-| No topic files yet — create as patterns emerge during development |
+| `animation-system.md` | Reveal sequence, card flip, string drawing |
+| `design-system.md` | Colors, fonts, spacing, visual standards |
+| `testing.md` | Writing tests, mocking patterns, vitest config |
+| `content-safety.md` | Blocklist, system prompt, safety layers |
+| `api-and-data.md` | Generate endpoint, Claude API, response validation |
+| `feature-inventory.md` | Component responsibilities, what's built vs planned |

@@ -7,7 +7,7 @@ Comedic AI-powered SPA: user enters two concepts, Claude generates a 7-node cons
 - **Always deploy after changes**: Push to `main` on GitHub; Netlify auto-deploys.
 - **Content safety is non-negotiable**: 3-layer safety (client blocklist, server blocklist, Claude system prompt). Every change touching AI output or user input must respect all three.
 - **No partial boards**: Board renders completely or shows a themed error. Never render a half-built chain.
-- **Run tests before committing**: `npm test` (315+ tests, all must pass).
+- **Run tests before committing**: `npm test` (272+ tests, all must pass).
 
 ## Tech Stack
 
@@ -67,7 +67,7 @@ npm install                # Install dependencies
 npm run dev                # Vite dev server (port 5173)
 npx netlify dev            # Dev with Netlify Functions
 npm run build              # tsc -b && vite build → dist/
-npm test                   # vitest run (315+ tests)
+npm test                   # vitest run (272+ tests)
 npm run test:watch         # vitest watch mode
 npx tsc --noEmit           # Type check only
 ```

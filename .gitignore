@@ -1,0 +1,5 @@
+# Local Netlify folder
+.netlify
+
+# Independent repos (have their own git)
+Weather App/

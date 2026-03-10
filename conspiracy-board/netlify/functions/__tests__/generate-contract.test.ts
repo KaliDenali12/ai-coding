@@ -94,7 +94,7 @@ describe('generate handler — API contract', () => {
       const req = new Request('http://localhost/.netlify/functions/generate', { method: 'GET' })
       const res = await handler(req)
       const body = await res.json()
-      expect(body).toEqual({ error: 'Method not allowed' })
+      expect(body).toEqual({ error: 'method_not_allowed', message: 'Method not allowed' })
     })
 
     it('405 response has Content-Type application/json', async () => {

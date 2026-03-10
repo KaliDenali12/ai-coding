@@ -141,7 +141,7 @@ function validateResponse(data: unknown): ChainResponse {
 // --- Handler ---
 export default async (request: Request) => {
   if (request.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+    return new Response(JSON.stringify({ error: 'method_not_allowed', message: 'Method not allowed' }), {
       status: 405,
       headers: { 'Content-Type': 'application/json' },
     })

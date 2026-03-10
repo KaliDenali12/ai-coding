@@ -18,7 +18,8 @@ Comedic AI-powered SPA: user enters two concepts, Claude generates a 7-node cons
 | Animation | Framer Motion + CSS 3D + SVG stroke-dash | 12.x |
 | Backend | Netlify Functions (single serverless endpoint) | — |
 | AI | Anthropic Claude Sonnet via `@anthropic-ai/sdk` | 0.78 |
-| Testing | Vitest + Testing Library + jsdom | 3.x |
+| Testing | Vitest + Testing Library + jsdom | 3.x + 28.x |
+| Linting | ESLint + typescript-eslint + React hooks/refresh | 9.x (flat config) |
 | CSS Utility | clsx + tailwind-merge via `cn()` | — |
 
 ## Project Structure
@@ -52,8 +53,11 @@ conspiracy-board/
 │   └── functions/
 │       ├── generate.ts            # Claude API proxy: validate → prompt → call → validate → respond
 │       └── __tests__/generate.test.ts
+├── .github/
+│   └── dependabot.yml             # Weekly npm dependency update PRs
 ├── PRD.md/                        # Product requirements (5 docs, reference only)
 ├── index.html                     # Google Fonts preload (12 fonts)
+├── eslint.config.js               # ESLint 9 flat config (React + TS + hooks)
 ├── vite.config.ts                 # React + Tailwind plugins, @/ alias
 ├── vitest.config.ts               # jsdom, globals, setup file
 ├── netlify.toml                   # Build + redirect /api/* → functions
@@ -67,6 +71,7 @@ npm install                # Install dependencies
 npm run dev                # Vite dev server (port 5173)
 npx netlify dev            # Dev with Netlify Functions
 npm run build              # tsc -b && vite build → dist/
+npm run lint               # eslint (flat config, must pass)
 npm test                   # vitest run (272+ tests)
 npm run test:watch         # vitest watch mode
 npx tsc --noEmit           # Type check only
@@ -176,10 +181,13 @@ No database. Single API response type — see `src/types/conspiracy.ts`:
 
 - **Tailwind v4**: No `tailwind.config.ts`. Colors/fonts defined in `@theme` block in `index.css`. Don't create a config file.
 - **Blocklist duplication**: `src/lib/blocklist.ts` and `netlify/functions/generate.ts` have separate copies. Update BOTH.
-- **Blocklist normalization pipeline**: `normalizeInput()` applies: (1) strip zero-width chars, (2) NFKD normalization (fullwidth→ASCII), (3) strip combining marks, (4) lowercase, (5) Cyrillic/Greek confusable→Latin mapping, (6) leet-speak substitution, (7) strip separators `[\-_.]+`, (8) collapse whitespace. Duplicated in both `blocklist.ts` and `generate.ts`.
+- **Blocklist normalization pipeline**: `normalizeInput()` applies: (1) strip zero-width chars, (2) NFKD normalization (fullwidth→ASCII), (3) strip combining marks, (4) lowercase, (5) Cyrillic/Greek confusable→Latin mapping, (6) leet-speak substitution, (7) strip separators `[_.+-]+`, (8) collapse whitespace. Duplicated in both `blocklist.ts` and `generate.ts`.
 - **`.npmrc` has `ignore-scripts=true`**: Supply chain hardening. Netlify build command runs `npm rebuild esbuild` before build since esbuild needs its postinstall script.
 - **Security headers**: Configured in `netlify.toml` `[[headers]]` block — CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy.
 - **Build pipeline security**: `netlify.toml` build command runs `npm audit --audit-level=high` before build. Fails on high/critical advisories.
+- **ESLint flat config**: `eslint.config.js` uses ESLint 9 flat config format. No `.eslintrc` file. `react-hooks/purity` is disabled (false positives on intentional `Math.random()` in `useMemo`). Underscore-prefixed vars are allowed as unused.
+- **`cn()` utility unused**: `src/lib/cn.ts` wraps `clsx` + `tailwind-merge` but no component currently imports it. Both packages are runtime deps providing zero production value until `cn()` is adopted.
+- **Vitest 4 blocked**: Upgrade from 3.x to 4.x breaks 16 tests in `generate-contract.test.ts` due to mock constructor behavior change (`new` keyword now constructs instead of calling `mock.apply`). Mock patterns in that file need updating before upgrade.
 - **Import extensions**: This project uses `allowImportingTsExtensions` + `verbatimModuleSyntax`. Always include `.ts`/`.tsx` in imports.
 - **No public/ directory**: Cork texture is CSS-only (`cork-bg` class). No image files exist.
 - **Font loading**: All 12 fonts loaded in `index.html` `<link>`. Adding a font requires updating both the `<link>` tag and the `@theme` block.

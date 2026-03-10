@@ -48,8 +48,16 @@ Server receives → validate fields → server isBlocked() → if blocked, retur
                                                         → if valid, call Claude
 ```
 
+## Known Bug: Separator Bypass (BUG-001)
+`normalizeInput()` replaces separators (`[\s\-_.]+`) with a **space** instead of removing them.
+- `h.i.t.l.e.r` → `h i t l e r` (does NOT match `hitler`)
+- **Fix**: Change `' '` to `''` in the regex replacement in BOTH `blocklist.ts` and `generate.ts`
+- Tracked in: `audit-reports/TEST_COVERAGE_REPORT_001_2026-03-10.md` BUG-001
+- Skipped test: `src/lib/__tests__/blocklist-deep.test.ts` — `catches terms with separator bypasses`
+
 ## Testing Safety Changes
 After modifying blocklist or system prompt:
-- Run `npm test` (blocklist tests in `src/lib/__tests__/blocklist.test.ts`)
+- Run `npm test` (blocklist tests in `src/lib/__tests__/blocklist.test.ts` and `blocklist-deep.test.ts`)
 - Test with diverse input pairs manually to verify tone and safety
 - Test character substitution bypass attempts (e.g., `n1gg3r` should be caught)
+- After fixing BUG-001, unskip the separator bypass test in `blocklist-deep.test.ts`

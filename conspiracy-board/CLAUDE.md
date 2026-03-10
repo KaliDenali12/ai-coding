@@ -7,7 +7,7 @@ Comedic AI-powered SPA: user enters two concepts, Claude generates a 7-node cons
 - **Always deploy after changes**: Push to `main` on GitHub; Netlify auto-deploys.
 - **Content safety is non-negotiable**: 3-layer safety (client blocklist, server blocklist, Claude system prompt). Every change touching AI output or user input must respect all three.
 - **No partial boards**: Board renders completely or shows a themed error. Never render a half-built chain.
-- **Run tests before committing**: `npm test` (120 tests, all must pass).
+- **Run tests before committing**: `npm test` (265+ tests, all must pass).
 
 ## Tech Stack
 
@@ -67,7 +67,7 @@ npm install                # Install dependencies
 npm run dev                # Vite dev server (port 5173)
 npx netlify dev            # Dev with Netlify Functions
 npm run build              # tsc -b && vite build → dist/
-npm test                   # vitest run (120 tests)
+npm test                   # vitest run (265+ tests)
 npm run test:watch         # vitest watch mode
 npx tsc --noEmit           # Type check only
 ```
@@ -176,6 +176,7 @@ No database. Single API response type — see `src/types/conspiracy.ts`:
 
 - **Tailwind v4**: No `tailwind.config.ts`. Colors/fonts defined in `@theme` block in `index.css`. Don't create a config file.
 - **Blocklist duplication**: `src/lib/blocklist.ts` and `netlify/functions/generate.ts` have separate copies. Update BOTH.
+- **Known bug — blocklist separator bypass**: `normalizeInput()` replaces separators with a space instead of removing them, so `h.i.t.l.e.r` → `h i t l e r` (doesn't match `hitler`). Fix: change `' '` to `''` in the regex replacement in BOTH files. See `audit-reports/TEST_COVERAGE_REPORT_001_2026-03-10.md` BUG-001.
 - **Import extensions**: This project uses `allowImportingTsExtensions` + `verbatimModuleSyntax`. Always include `.ts`/`.tsx` in imports.
 - **No public/ directory**: Cork texture is CSS-only (`cork-bg` class). No image files exist.
 - **Font loading**: All 12 fonts loaded in `index.html` `<link>`. Adding a font requires updating both the `<link>` tag and the `@theme` block.

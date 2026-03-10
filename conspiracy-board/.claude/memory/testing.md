@@ -9,16 +9,18 @@
 
 ## Commands
 ```bash
-npm test              # vitest run (all 120 tests)
+npm test              # vitest run (265+ tests)
 npm run test:watch    # vitest watch mode
 npm run test:coverage # vitest with coverage
 ```
 
 ## Test Structure
-- Component tests: `src/components/__tests__/*.test.tsx`
-- Lib tests: `src/lib/__tests__/*.test.ts`
-- App integration: `src/__tests__/App.test.tsx`
-- Server function: `netlify/functions/__tests__/generate.test.ts`
+- Smoke tests: `src/__tests__/smoke.test.tsx`
+- Component tests: `src/components/__tests__/*.test.tsx` (incl. CaseFileStamp)
+- Lib tests: `src/lib/__tests__/*.test.ts` (incl. cn, deep api/blocklist/layout/fonts tests)
+- App integration: `src/__tests__/App.test.tsx`, `src/__tests__/App-integration-deep.test.tsx`
+- Server function: `netlify/functions/__tests__/generate.test.ts`, `generate-handler.test.ts`
+- Audit report: `audit-reports/TEST_COVERAGE_REPORT_001_2026-03-10.md`
 
 ## Mocking Patterns
 

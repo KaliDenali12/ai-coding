@@ -36,6 +36,18 @@ const SUBSTITUTIONS: Record<string, string> = {
   '+': 't',
 }
 
+// Cyrillic/Greek confusables that survive NFKD normalization
+const CONFUSABLES: Record<string, string> = {
+  '\u0430': 'a', '\u0435': 'e', '\u043E': 'o', '\u0440': 'p', '\u0441': 'c',
+  '\u0443': 'y', '\u0445': 'x', '\u0456': 'i', '\u0455': 's', '\u0458': 'j',
+  '\u04BB': 'h', '\u0432': 'b', '\u043D': 'h', '\u043A': 'k', '\u0442': 't',
+  '\u043C': 'm', '\u0410': 'a', '\u0412': 'b', '\u0415': 'e', '\u041A': 'k',
+  '\u041C': 'm', '\u041D': 'h', '\u041E': 'o', '\u0420': 'p', '\u0421': 'c',
+  '\u0422': 't', '\u0423': 'y', '\u0425': 'x',
+  '\u03B1': 'a', '\u03B5': 'e', '\u03BF': 'o', '\u03C1': 'p', '\u03BA': 'k',
+  '\u03C4': 't', '\u03C5': 'u', '\u03B9': 'i',
+}
+
 function normalizeInput(input: string): string {
   // Strip zero-width characters (joiners, non-joiners, zero-width spaces, etc.)
   let normalized = input.replace(/[\u200B-\u200F\u2028-\u202F\u2060\uFEFF]/g, '')
@@ -44,6 +56,9 @@ function normalizeInput(input: string): string {
   // Strip combining marks (diacritics, underlines, overlines, etc.)
   normalized = normalized.replace(/[\u0300-\u036F]/g, '')
   normalized = normalized.toLowerCase().trim()
+  for (const [char, replacement] of Object.entries(CONFUSABLES)) {
+    normalized = normalized.replaceAll(char, replacement)
+  }
   for (const [char, replacement] of Object.entries(SUBSTITUTIONS)) {
     normalized = normalized.replaceAll(char, replacement)
   }

@@ -31,7 +31,7 @@ Chain has exactly 7 items: item[0] = concept A, items[1-5] = intermediate steps,
 |--------|-----------|------|
 | 400 | `validation` | Missing/invalid inputs, same concepts |
 | 400 | `blocked` | Blocklisted content |
-| 405 | — | Non-POST method |
+| 405 | `method_not_allowed` | Non-POST method |
 | 500 | `server_error` | Claude API failure, unknown errors |
 | 502 | `invalid_response` | Claude returned malformed JSON |
 

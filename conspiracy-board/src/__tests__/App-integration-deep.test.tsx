@@ -1,18 +1,7 @@
-import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from '../App.tsx'
-
-// Polyfill SVG methods for jsdom
-beforeAll(() => {
-  if (typeof SVGElement !== 'undefined') {
-    Object.defineProperty(SVGElement.prototype, 'getTotalLength', {
-      value: () => 500,
-      writable: true,
-      configurable: true,
-    })
-  }
-})
 
 // Mock framer-motion
 vi.mock('framer-motion', () => ({

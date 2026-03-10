@@ -24,7 +24,7 @@ function App() {
     abortControllerRef.current = new AbortController()
 
     try {
-      const data = await generateConspiracy({ conceptA, conceptB })
+      const data = await generateConspiracy({ conceptA, conceptB }, abortControllerRef.current.signal)
       setBoardData(data)
       setScreen('board')
     } catch (error) {

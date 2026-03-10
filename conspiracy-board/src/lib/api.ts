@@ -57,11 +57,13 @@ export function validateChainResponse(data: unknown): ConspiracyChain {
 
 export async function generateConspiracy(
   request: GenerateRequest,
+  signal?: AbortSignal,
 ): Promise<ConspiracyChain> {
   const response = await fetch('/.netlify/functions/generate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(request),
+    signal,
   })
 
   if (!response.ok) {

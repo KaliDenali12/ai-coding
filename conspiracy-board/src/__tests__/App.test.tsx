@@ -170,10 +170,10 @@ describe('App Integration', () => {
     await user.type(screen.getByTestId('input-b'), 'IKEA')
     await user.click(screen.getByTestId('submit-button'))
 
-    expect(mockGenerateConspiracy).toHaveBeenCalledWith({
-      conceptA: 'Penguins',
-      conceptB: 'IKEA',
-    })
+    expect(mockGenerateConspiracy).toHaveBeenCalledWith(
+      { conceptA: 'Penguins', conceptB: 'IKEA' },
+      expect.any(AbortSignal),
+    )
   })
 
   it('chip click triggers immediate API call', async () => {
@@ -185,9 +185,9 @@ describe('App Integration', () => {
     const chips = screen.getAllByTestId('example-chip')
     await user.click(chips[0])
 
-    expect(mockGenerateConspiracy).toHaveBeenCalledWith({
-      conceptA: 'Penguins',
-      conceptB: 'IKEA Furniture',
-    })
+    expect(mockGenerateConspiracy).toHaveBeenCalledWith(
+      { conceptA: 'Penguins', conceptB: 'IKEA Furniture' },
+      expect.any(AbortSignal),
+    )
   })
 })

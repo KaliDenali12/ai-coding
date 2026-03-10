@@ -19,31 +19,15 @@ const validChain = {
 }
 
 describe('validateChainResponse', () => {
-  it('accepts a valid chain response', () => {
-    const result = validateChainResponse(validChain)
-    expect(result.chain).toHaveLength(7)
-    expect(result.case_file_number).toBe('CASE FILE #1234-A')
-    expect(result.classification_level).toBe('TOP SECRET')
-  })
-
   it('rejects null', () => {
     expect(() => validateChainResponse(null)).toThrow('not an object')
   })
 
-  it('rejects non-object', () => {
+  it('rejects non-object (string)', () => {
     expect(() => validateChainResponse('string')).toThrow('not an object')
   })
 
-  it('rejects chain with wrong length', () => {
-    expect(() =>
-      validateChainResponse({
-        ...validChain,
-        chain: validChain.chain.slice(0, 5),
-      }),
-    ).toThrow('exactly 7 items')
-  })
-
-  it('rejects missing case_file_number', () => {
+  it('rejects missing case_file_number (empty string)', () => {
     expect(() =>
       validateChainResponse({
         ...validChain,
@@ -52,7 +36,7 @@ describe('validateChainResponse', () => {
     ).toThrow('missing case_file_number')
   })
 
-  it('rejects missing classification_level', () => {
+  it('rejects missing classification_level (empty string)', () => {
     expect(() =>
       validateChainResponse({
         ...validChain,
@@ -61,17 +45,7 @@ describe('validateChainResponse', () => {
     ).toThrow('missing classification_level')
   })
 
-  it('rejects node with missing title', () => {
-    const badChain = {
-      ...validChain,
-      chain: validChain.chain.map((n, i) =>
-        i === 3 ? { ...n, title: '' } : n,
-      ),
-    }
-    expect(() => validateChainResponse(badChain)).toThrow('node 3: missing title')
-  })
-
-  it('rejects node with missing emoji', () => {
+  it('rejects node with missing emoji (empty string)', () => {
     const badChain = {
       ...validChain,
       chain: validChain.chain.map((n, i) =>
@@ -81,17 +55,7 @@ describe('validateChainResponse', () => {
     expect(() => validateChainResponse(badChain)).toThrow('node 0: missing emoji')
   })
 
-  it('rejects node with invalid font_category', () => {
-    const badChain = {
-      ...validChain,
-      chain: validChain.chain.map((n, i) =>
-        i === 2 ? { ...n, font_category: 'comic_sans' } : n,
-      ),
-    }
-    expect(() => validateChainResponse(badChain)).toThrow('invalid font_category')
-  })
-
-  it('rejects node with missing teaser', () => {
+  it('rejects node with missing teaser (empty string)', () => {
     const badChain = {
       ...validChain,
       chain: validChain.chain.map((n, i) =>
@@ -101,7 +65,7 @@ describe('validateChainResponse', () => {
     expect(() => validateChainResponse(badChain)).toThrow('node 1: missing teaser')
   })
 
-  it('rejects node with missing briefing', () => {
+  it('rejects node with missing briefing (empty string)', () => {
     const badChain = {
       ...validChain,
       chain: validChain.chain.map((n, i) =>

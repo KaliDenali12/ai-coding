@@ -28,7 +28,8 @@ function normalizeInput(input: string): string {
   for (const [char, replacement] of Object.entries(SUBSTITUTIONS)) {
     normalized = normalized.replaceAll(char, replacement)
   }
-  return normalized.replace(/[\s\-_.]+/g, ' ')
+  normalized = normalized.replace(/[\-_.]+/g, '')
+  return normalized.replace(/\s+/g, ' ')
 }
 
 function isBlocked(input: string): boolean {

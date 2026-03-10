@@ -41,8 +41,10 @@ function normalizeInput(input: string): string {
   for (const [char, replacement] of Object.entries(SUBSTITUTIONS)) {
     normalized = normalized.replaceAll(char, replacement)
   }
-  // Remove common separators used to bypass word matching
-  normalized = normalized.replace(/[\s\-_.]+/g, ' ')
+  // Strip non-space separators to catch bypass attempts like h.i.t.l.e.r
+  normalized = normalized.replace(/[\-_.]+/g, '')
+  // Collapse whitespace for multi-word term matching (e.g. "sandy hook")
+  normalized = normalized.replace(/\s+/g, ' ')
   return normalized
 }
 

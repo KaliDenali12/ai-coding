@@ -195,8 +195,10 @@ describe('App Integration — Deep Flows', () => {
     await user.type(screen.getByTestId('input-b'), 'Pizza')
     await user.click(screen.getByTestId('submit-button'))
 
-    // Wait a bit — should NOT transition to error screen
-    await new Promise((r) => setTimeout(r, 100))
+    // Wait for the rejected promise to settle, then verify no error screen
+    await waitFor(() => {
+      expect(mockGenerateConspiracy).toHaveBeenCalledTimes(1)
+    })
 
     // Should still be on loading screen (AbortError is silently ignored)
     expect(screen.queryByTestId('error-screen')).not.toBeInTheDocument()

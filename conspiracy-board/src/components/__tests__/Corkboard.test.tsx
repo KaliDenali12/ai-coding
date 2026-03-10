@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeAll } from 'vitest'
 import { render, screen, fireEvent, act } from '@testing-library/react'
 import { Corkboard } from '../Corkboard.tsx'
 import type { ConspiracyChain } from '@/types/conspiracy.ts'
+import { FAIL_THRESHOLD_MS } from '@/lib/constants.ts'
 
 // Polyfill SVG methods for jsdom
 beforeAll(() => {
@@ -77,7 +78,7 @@ describe('Corkboard', () => {
 
     // Advance past all reveal animations
     act(() => {
-      vi.advanceTimersByTime(15000)
+      vi.advanceTimersByTime(FAIL_THRESHOLD_MS)
     })
 
     expect(screen.getByTestId('new-investigation-btn')).toBeInTheDocument()
@@ -90,7 +91,7 @@ describe('Corkboard', () => {
     render(<Corkboard data={mockData} onNewInvestigation={onNew} />)
 
     act(() => {
-      vi.advanceTimersByTime(15000)
+      vi.advanceTimersByTime(FAIL_THRESHOLD_MS)
     })
 
     fireEvent.click(screen.getByTestId('new-investigation-btn'))
@@ -103,7 +104,7 @@ describe('Corkboard', () => {
     render(<Corkboard data={mockData} onNewInvestigation={vi.fn()} />)
 
     act(() => {
-      vi.advanceTimersByTime(15000)
+      vi.advanceTimersByTime(FAIL_THRESHOLD_MS)
     })
 
     const cards = screen.getAllByTestId('polaroid-card')

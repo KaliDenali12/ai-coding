@@ -9,10 +9,7 @@ describe('isBlocked — leet-speak and normalization', () => {
     expect(isBlocked('7rump')).toBe(true)  // 7rump → trump
   })
 
-  // BUG: normalizeInput replaces separators with spaces instead of removing them,
-  // so 'h.i.t.l.e.r' becomes 'h i t l e r' which doesn't match 'hitler'.
-  // The regex /[\s\-_.]+/g should use '' as replacement, not ' '.
-  it.skip('catches terms with separator bypasses', () => {
+  it('catches terms with separator bypasses', () => {
     expect(isBlocked('h.i.t.l.e.r')).toBe(true)
     expect(isBlocked('h-i-t-l-e-r')).toBe(true)
     expect(isBlocked('h_i_t_l_e_r')).toBe(true)

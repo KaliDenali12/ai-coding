@@ -87,7 +87,7 @@ npm audit: found 0 vulnerabilities
 | `framer-motion` | 12.35.2 | 12.35.2 | 0 | runtime | Active (Matt Perry) |
 | `react` | 19.2.4 | 19.2.4 | 0 | runtime | Active (Meta) |
 | `react-dom` | 19.2.4 | 19.2.4 | 0 | runtime | Active (Meta) |
-| `tailwind-merge` | 3.0.2 | 3.0.2 | 0 | runtime | Active |
+| `tailwind-merge` | 3.5.0 | 3.5.0 | 0 | runtime | Active |
 | `tailwindcss` | 4.2.1 | 4.2.1 | 0 | dev | Active (Tailwind Labs) |
 | `@tailwindcss/vite` | 4.2.1 | 4.2.1 | 0 | dev | Active (Tailwind Labs) |
 | `typescript` | 5.9.3 | 5.9.3 | 0 | dev | Active (Microsoft) |
@@ -227,7 +227,7 @@ No concerning micro-packages. All dependencies serve meaningful purposes.
 - **React/React-DOM**: Meta (massive team)
 - **Vite/Vitest**: VoidZero (well-funded company, Evan You)
 - **Tailwind CSS**: Tailwind Labs (funded company)
-- **Framer Motion**: Matt Perry (single maintainer, but well-funded via Framer)
+- **Framer Motion**: Matt Perry (single maintainer, left Framer — project rebranding to `motion` package)
 - **TypeScript**: Microsoft
 - **ESLint**: OpenJS Foundation
 - **Anthropic SDK**: Anthropic (company)
@@ -240,7 +240,8 @@ No concerning micro-packages. All dependencies serve meaningful purposes.
 |---------|----------------|------------|-------|
 | `clsx` | Single maintainer | Low | Extremely stable, no deps, 8 KB. Essentially "done" software. |
 | `tailwind-merge` | Single maintainer | Low | Mature, well-tested. Would be straightforward to fork if abandoned. |
-| `framer-motion` | Single maintainer (Matt Perry) | Medium | Complex, hard to replace. However, backed by Framer company. |
+| `framer-motion` | Single maintainer (Matt Perry) | Medium | Complex, hard to replace. Matt Perry left Framer; project rebranding to `motion` npm package. `framer-motion` still receives updates but consider migrating to `motion` long-term. |
+| `jsdom` | Primarily Domenic Denicola | Medium | 10+ years as primary maintainer. Volunteer-driven. Critical for testing infrastructure. |
 
 ---
 

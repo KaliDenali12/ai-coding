@@ -11,18 +11,6 @@ vi.mock('@anthropic-ai/sdk', () => {
   }
 })
 
-const validChainJSON = {
-  chain: Array.from({ length: 7 }, (_, i) => ({
-    title: `Node ${i}`,
-    emoji: '🔍',
-    font_category: 'horror',
-    teaser: `Teaser ${i}`,
-    briefing: `Briefing ${i}`,
-  })),
-  case_file_number: 'CASE FILE #1234-A',
-  classification_level: 'TOP SECRET',
-}
-
 function makeRequest(body: unknown, method = 'POST'): Request {
   return new Request('http://localhost/.netlify/functions/generate', {
     method,

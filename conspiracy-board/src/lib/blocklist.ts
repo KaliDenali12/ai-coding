@@ -63,7 +63,7 @@ function normalizeInput(input: string): string {
     normalized = normalized.replaceAll(char, replacement)
   }
   // Strip non-space separators to catch bypass attempts like h.i.t.l.e.r
-  normalized = normalized.replace(/[\-_.]+/g, '')
+  normalized = normalized.replace(/[_.+-]+/g, '')
   // Collapse whitespace for multi-word term matching (e.g. "sandy hook")
   normalized = normalized.replace(/\s+/g, ' ')
   return normalized

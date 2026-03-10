@@ -49,7 +49,7 @@ function normalizeInput(input: string): string {
   for (const [char, replacement] of Object.entries(SUBSTITUTIONS)) {
     normalized = normalized.replaceAll(char, replacement)
   }
-  normalized = normalized.replace(/[\-_.]+/g, '')
+  normalized = normalized.replace(/[_.+-]+/g, '')
   return normalized.replace(/\s+/g, ' ')
 }
 

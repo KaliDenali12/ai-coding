@@ -81,7 +81,10 @@ describe('PolaroidCard', () => {
     expect(onClick).toHaveBeenCalledOnce()
   })
 
-  it('calls onClick on Enter key', () => {
+  it.each([
+    ['Enter', 'Enter'],
+    ['Space', ' '],
+  ])('calls onClick on %s key', (_label, key) => {
     const onClick = vi.fn()
     render(
       <PolaroidCard
@@ -92,22 +95,7 @@ describe('PolaroidCard', () => {
         animate={false}
       />,
     )
-    fireEvent.keyDown(screen.getByTestId('polaroid-card'), { key: 'Enter' })
-    expect(onClick).toHaveBeenCalledOnce()
-  })
-
-  it('calls onClick on Space key', () => {
-    const onClick = vi.fn()
-    render(
-      <PolaroidCard
-        node={mockNode}
-        isFlipped={false}
-        onClick={onClick}
-        rotation={0}
-        animate={false}
-      />,
-    )
-    fireEvent.keyDown(screen.getByTestId('polaroid-card'), { key: ' ' })
+    fireEvent.keyDown(screen.getByTestId('polaroid-card'), { key })
     expect(onClick).toHaveBeenCalledOnce()
   })
 

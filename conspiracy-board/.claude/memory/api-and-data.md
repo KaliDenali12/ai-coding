@@ -32,6 +32,7 @@ Chain has exactly 7 items: item[0] = concept A, items[1-5] = intermediate steps,
 | 400 | `validation` | Missing/invalid inputs, same concepts |
 | 400 | `blocked` | Blocklisted content |
 | 405 | `method_not_allowed` | Non-POST method |
+| 413 | `validation` | Request body > 10KB |
 | 500 | `server_error` | Claude API failure, unknown errors |
 | 502 | `invalid_response` | Claude returned malformed JSON |
 
@@ -39,8 +40,9 @@ All errors return `{ error, message }`. Message is always themed (never leaks ra
 
 ## Client-Side (src/lib/api.ts)
 
-### generateConspiracy(request)
+### generateConspiracy(request, signal?)
 - Fetches `/.netlify/functions/generate` (Netlify redirects `/api/*` in netlify.toml)
+- Optional `AbortSignal` parameter for request cancellation (wired from App.tsx)
 - On non-200: parses error JSON, throws `ApiError` with statusCode
 - On 200: parses JSON, validates via `validateChainResponse()`, returns typed data
 

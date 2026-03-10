@@ -4,9 +4,10 @@
 
 ### Layer 1: Client Blocklist (src/lib/blocklist.ts)
 - `checkInputs()`: validates non-empty, ≤50 chars, different concepts, not blocklisted
-- `isBlocked()`: normalizes input (leet-speak substitution), checks against `BLOCKED_TERMS`
-- Substitution map: `@ → a`, `0 → o`, `1 → i`, `3 → e`, `$ → s`, `5 → s`, `7 → t`, `! → i`, `+ → t`
-- Normalizes separators: strips `[\-_.]+` entirely, then collapses `\s+` → single space
+- `isBlocked()`: normalizes input via multi-step pipeline, checks against `BLOCKED_TERMS`
+- Normalization pipeline (in order): strip zero-width chars → NFKD normalize → strip combining marks → lowercase → Cyrillic/Greek confusable mapping → leet-speak substitution → strip separators → collapse whitespace
+- Leet-speak substitution map: `@ → a`, `0 → o`, `1 → i`, `3 → e`, `$ → s`, `5 → s`, `7 → t`, `! → i`, `+ → t`
+- Confusables map: 30 Cyrillic/Greek chars → Latin equivalents (е→e, а→a, о→o, і→i, etc.)
 - Returns themed error: "This subject is classified beyond our clearance level."
 
 ### Layer 2: Server Blocklist (netlify/functions/generate.ts)
@@ -56,21 +57,15 @@ Fixed by splitting `normalizeInput()` regex into two steps:
 **Important**: A naive "replace all separators with empty string" breaks multi-word blocked terms.
 Applied to BOTH `blocklist.ts` and `generate.ts`. Separator bypass test re-enabled.
 
-## BUG-003: Unicode Blocklist Bypass (UNFIXED)
+## BUG-003: Unicode Blocklist Bypass (FIXED 2026-03-10)
 
-`normalizeInput()` handles ASCII leet-speak and separator characters but NOT:
-- **Zero-width chars**: `h\u200Bi\u200Bt\u200Bl\u200Be\u200Br` → invisible joiners not stripped → bypass
-- **Unicode confusables**: Cyrillic `а` (U+0430) vs Latin `a` → `hіtler` with Cyrillic `і` → bypass
-- **Fullwidth chars**: `ｈｉｔｌｅｒ` (U+FF48 etc.) → bypass
-- **Combining marks**: `ḣitler` → bypass
+Fixed in security audit. `normalizeInput()` now handles:
+- **Zero-width chars**: stripped via `[\u200B-\u200F\u2028-\u202F\u2060\uFEFF]` regex
+- **Fullwidth chars**: NFKD normalization decomposes `ｈ` → `h`
+- **Combining marks**: stripped via `[\u0300-\u036F]` regex
+- **Cyrillic/Greek confusables**: 30-char `CONFUSABLES` mapping table (е→e, а→a, і→i, etc.)
 
-**Fix approach**: Before leet-speak substitution, apply:
-1. Strip zero-width characters: `[\u200B\u200C\u200D\uFEFF]`
-2. NFKD normalize (decomposes fullwidth + strips compatibility forms)
-3. Strip combining diacritical marks: `[\u0300-\u036f]`
-4. Apply to BOTH `blocklist.ts` and `generate.ts`
-
-Discovered in test quality audit (2026-03-10). See `audit-reports/TEST_QUALITY_REPORT_001_2026-03-10.md`.
+Applied to BOTH `blocklist.ts` and `generate.ts`. See `audit-reports/08_SECURITY_AUDIT_REPORT_001_2026-03-10_1545.md`.
 
 ## Testing Safety Changes
 After modifying blocklist or system prompt:

@@ -176,7 +176,10 @@ No database. Single API response type — see `src/types/conspiracy.ts`:
 
 - **Tailwind v4**: No `tailwind.config.ts`. Colors/fonts defined in `@theme` block in `index.css`. Don't create a config file.
 - **Blocklist duplication**: `src/lib/blocklist.ts` and `netlify/functions/generate.ts` have separate copies. Update BOTH.
-- **Blocklist separator bypass (FIXED)**: `normalizeInput()` now uses two-step regex: (1) strip non-space separators `[\-_.]+` → `''`, (2) collapse whitespace `\s+` → `' '`. This catches `h.i.t.l.e.r` while preserving multi-word term matching like `sandy hook`. Fixed in both `blocklist.ts` and `generate.ts`.
+- **Blocklist normalization pipeline**: `normalizeInput()` applies: (1) strip zero-width chars, (2) NFKD normalization (fullwidth→ASCII), (3) strip combining marks, (4) lowercase, (5) Cyrillic/Greek confusable→Latin mapping, (6) leet-speak substitution, (7) strip separators `[\-_.]+`, (8) collapse whitespace. Duplicated in both `blocklist.ts` and `generate.ts`.
+- **`.npmrc` has `ignore-scripts=true`**: Supply chain hardening. Netlify build command runs `npm rebuild esbuild` before build since esbuild needs its postinstall script.
+- **Security headers**: Configured in `netlify.toml` `[[headers]]` block — CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy.
+- **Build pipeline security**: `netlify.toml` build command runs `npm audit --audit-level=high` before build. Fails on high/critical advisories.
 - **Import extensions**: This project uses `allowImportingTsExtensions` + `verbatimModuleSyntax`. Always include `.ts`/`.tsx` in imports.
 - **No public/ directory**: Cork texture is CSS-only (`cork-bg` class). No image files exist.
 - **Font loading**: All 12 fonts loaded in `index.html` `<link>`. Adding a font requires updating both the `<link>` tag and the `@theme` block.
@@ -215,7 +218,7 @@ board ──(new investigation)──→ landing ←─────────�
 ```
 
 - `App.tsx` owns all state transitions via `useCallback` handlers
-- `AbortController` created on re-submit but **signal is never passed to `fetch()`** — see Known Bugs below
+- `AbortController` signal is wired through `generateConspiracy()` to `fetch()` for proper request cancellation
 - Board data is held in `useState` — reset to `null` on "New Investigation"
 
 ## Known Bugs (Unfixed)

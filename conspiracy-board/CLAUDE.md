@@ -196,6 +196,7 @@ No database. Single API response type — see `src/types/conspiracy.ts`:
 - **Font loading**: All 12 fonts loaded in `index.html` `<link>`. Adding a font requires updating both the `<link>` tag and the `@theme` block.
 - **Animation timing**: Constants in `src/lib/constants.ts` control reveal sequence. Card delay, string duration, entrance time — all interconnected.
 - **Card dimensions**: Hardcoded in `Corkboard.tsx` — `200×280px` desktop, `150×210px` mobile (breakpoint: 768px).
+- **Resize debounce**: `Corkboard.tsx` resize handler is debounced (150ms). Do not remove — without it, resize fires at 60fps and re-renders all cards/strings every frame.
 - **Seeded random**: Layout uses deterministic seeded random from case file number hash. Same inputs always produce same layout.
 - **ErrorBoundary**: Wraps `<App />` in `main.tsx`. Catches render crashes and shows `ErrorScreen` with recovery. Class component (React requirement for error boundaries).
 

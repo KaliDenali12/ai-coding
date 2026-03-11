@@ -113,6 +113,47 @@ Choose font_category to match the EMOTIONAL TONE of each step:
 - retro: nostalgic, mid-century, pop-culture
 - underground: counter-culture, rebel, hidden society`
 
+// --- Rate Limiting ---
+const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000 // 15 minutes
+const RATE_LIMIT_MAX_REQUESTS = 20 // per IP per window
+
+const rateLimitMap = new Map<string, number[]>()
+
+function getClientIp(request: Request): string {
+  return (
+    request.headers.get('x-nf-client-connection-ip') ??
+    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
+    'unknown'
+  )
+}
+
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now()
+  const timestamps = rateLimitMap.get(ip) ?? []
+  const recent = timestamps.filter((t) => now - t < RATE_LIMIT_WINDOW_MS)
+  if (recent.length >= RATE_LIMIT_MAX_REQUESTS) {
+    return false // rate limited
+  }
+  recent.push(now)
+  rateLimitMap.set(ip, recent)
+
+  // Periodic cleanup: if map grows large, prune stale entries
+  if (rateLimitMap.size > 1000) {
+    for (const [key, val] of rateLimitMap) {
+      const filtered = val.filter((t) => now - t < RATE_LIMIT_WINDOW_MS)
+      if (filtered.length === 0) rateLimitMap.delete(key)
+      else rateLimitMap.set(key, filtered)
+    }
+  }
+
+  return true // allowed
+}
+
+/** @internal Exported for testing only */
+export function _resetRateLimiter(): void {
+  rateLimitMap.clear()
+}
+
 // --- Response Helper ---
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -177,6 +218,14 @@ export default async (request: Request): Promise<Response> => {
     return jsonResponse({ error: 'method_not_allowed', message: 'Method not allowed' }, 405)
   }
 
+  const clientIp = getClientIp(request)
+  if (!checkRateLimit(clientIp)) {
+    return jsonResponse({
+      error: 'rate_limited',
+      message: 'Too many investigations in progress. Please wait before starting another.',
+    }, 429)
+  }
+
   try {
     let rawBody: string
     try {
@@ -225,7 +274,13 @@ export default async (request: Request): Promise<Response> => {
     const message = await client.messages.create({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 4000,
-      system: SYSTEM_PROMPT,
+      system: [
+        {
+          type: 'text' as const,
+          text: SYSTEM_PROMPT,
+          cache_control: { type: 'ephemeral' as const },
+        },
+      ],
       messages: [
         {
           role: 'user',

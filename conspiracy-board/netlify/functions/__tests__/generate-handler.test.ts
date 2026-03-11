@@ -35,6 +35,7 @@ describe('generate handler', () => {
 
     const mod = await import('../generate.ts')
     handler = mod.default
+    mod._resetRateLimiter()
   })
 
   it('returns 500 when API returns invalid JSON', async () => {

@@ -33,6 +33,7 @@ Chain has exactly 7 items: item[0] = concept A, items[1-5] = intermediate steps,
 | 400 | `blocked` | Blocklisted content |
 | 405 | `method_not_allowed` | Non-POST method |
 | 413 | `validation` | Request body > 10KB (checked via actual body size, not Content-Length header) |
+| 429 | `rate_limited` | Exceeded 20 requests per 15-minute window for this IP |
 | 500 | `server_error` | Claude API failure, unknown errors |
 | 502 | `invalid_response` | Claude returned malformed JSON |
 
@@ -56,16 +57,22 @@ Custom error with `statusCode` property. Used in App.tsx for error handling.
 
 ## Server-Side (netlify/functions/generate.ts)
 
+### Rate Limiting
+- Per-IP: 20 requests per 15-minute window (in-memory Map, resets on cold start)
+- IP extracted from `x-nf-client-connection-ip` header (Netlify), falls back to `x-forwarded-for`
+- `_resetRateLimiter()` exported for test isolation — call in `beforeEach`
+
 ### Anthropic SDK Usage
 ```typescript
 const client = new Anthropic() // Reads ANTHROPIC_API_KEY from env
 const message = await client.messages.create({
   model: 'claude-sonnet-4-20250514',
   max_tokens: 4000,
-  system: SYSTEM_PROMPT,
+  system: [{ type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }],
   messages: [{ role: 'user', content: `Connect: "${a}" and "${b}"` }],
 })
 ```
+System prompt uses `cache_control: { type: 'ephemeral' }` for Anthropic prompt caching (90% discount on cached input tokens).
 
 ### Response Processing
 1. Extract text block from `message.content` array

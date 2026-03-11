@@ -7,7 +7,7 @@ Comedic AI-powered SPA: user enters two concepts, Claude generates a 7-node cons
 - **Always deploy after changes**: Push to `main` on GitHub; Netlify auto-deploys.
 - **Content safety is non-negotiable**: 3-layer safety (client blocklist, server blocklist, Claude system prompt). Every change touching AI output or user input must respect all three.
 - **No partial boards**: Board renders completely or shows a themed error. Never render a half-built chain.
-- **Run tests before committing**: `npm test` (267+ tests, all must pass).
+- **Run tests before committing**: `npm test` (272+ tests, all must pass).
 
 ## Tech Stack
 
@@ -73,7 +73,7 @@ npm run dev                # Vite dev server (port 5173)
 npx netlify dev            # Dev with Netlify Functions
 npm run build              # tsc -b && vite build → dist/
 npm run lint               # eslint (flat config, must pass)
-npm test                   # vitest run (267+ tests)
+npm test                   # vitest run (272+ tests)
 npm run test:watch         # vitest watch mode
 npx tsc --noEmit           # Type check only
 ```
@@ -99,8 +99,10 @@ No other env vars needed.
 
 ### Backend
 - **Single endpoint**: `POST /.netlify/functions/generate` (redirected from `/api/generate`)
-- **Flow**: Validate inputs → server-side blocklist → construct Claude prompt → call API → validate JSON → return
+- **Flow**: Rate limit check → validate inputs → server-side blocklist → construct Claude prompt → call API → validate JSON → return
+- **Rate limiting**: Per-IP, 20 requests per 15-minute window. In-memory (resets on cold start). Extracts IP from `x-nf-client-connection-ip` or `x-forwarded-for`. Returns 429 with themed message. `_resetRateLimiter()` exported for test isolation.
 - **Anthropic SDK**: Uses `new Anthropic()` which reads `ANTHROPIC_API_KEY` from env automatically
+- **Prompt caching**: System prompt uses `cache_control: { type: 'ephemeral' }` for Anthropic prompt caching (90% input token discount on cache hits)
 - **Model**: `claude-sonnet-4-20250514` with `max_tokens: 4000`
 - **Response validation**: Chain must have exactly 7 items, each with title/emoji/font_category/teaser/briefing. Length limits enforced: title ≤ 100, emoji ≤ 20, teaser ≤ 500, briefing ≤ 5000 chars (both server and client validators).
 - **Request size limit**: 10KB enforced by reading actual body (`request.text()`) — not the Content-Length header

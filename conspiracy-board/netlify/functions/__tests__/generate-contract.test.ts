@@ -52,6 +52,7 @@ describe('generate handler — API contract', () => {
 
     const mod = await import('../generate.ts')
     handler = mod.default
+    mod._resetRateLimiter()
   })
 
   // ── HTTP Method Contract ──────────────────────────────────────
@@ -474,11 +475,17 @@ describe('generate handler — API contract', () => {
       )
     })
 
-    it('includes system prompt in API call', async () => {
+    it('includes system prompt in API call with prompt caching', async () => {
       await handler(makeRequest({ conceptA: 'Cats', conceptB: 'Pizza' }))
       expect(mockCreate).toHaveBeenCalledWith(
         expect.objectContaining({
-          system: expect.stringContaining('conspiracy theory analyst'),
+          system: expect.arrayContaining([
+            expect.objectContaining({
+              type: 'text',
+              text: expect.stringContaining('conspiracy theory analyst'),
+              cache_control: { type: 'ephemeral' },
+            }),
+          ]),
         }),
       )
     })
@@ -494,6 +501,90 @@ describe('generate handler — API contract', () => {
           ],
         }),
       )
+    })
+  })
+
+  // ── Rate Limiting ──────────────────────────────────────────────
+
+  describe('rate limiting', () => {
+    beforeEach(() => {
+      mockCreate.mockResolvedValue({
+        content: [{ type: 'text', text: JSON.stringify(VALID_CHAIN_RESPONSE) }],
+      })
+    })
+
+    it('allows requests within rate limit', async () => {
+      const res = await handler(makeRequest({ conceptA: 'Cats', conceptB: 'Pizza' }))
+      expect(res.status).toBe(200)
+    })
+
+    it('returns 429 after exceeding rate limit', async () => {
+      // Send 20 requests (the limit)
+      for (let i = 0; i < 20; i++) {
+        await handler(makeRequest({ conceptA: `Concept${i}`, conceptB: 'Pizza' }))
+      }
+      // 21st request should be rate limited
+      const res = await handler(makeRequest({ conceptA: 'OneMore', conceptB: 'Pizza' }))
+      expect(res.status).toBe(429)
+      const body = await res.json()
+      expect(body.error).toBe('rate_limited')
+    })
+
+    it('429 response has Content-Type application/json', async () => {
+      for (let i = 0; i < 20; i++) {
+        await handler(makeRequest({ conceptA: `Concept${i}`, conceptB: 'Pizza' }))
+      }
+      const res = await handler(makeRequest({ conceptA: 'Extra', conceptB: 'Pizza' }))
+      expect(res.status).toBe(429)
+      expect(res.headers.get('Content-Type')).toBe('application/json')
+    })
+
+    it('429 response has themed message', async () => {
+      for (let i = 0; i < 20; i++) {
+        await handler(makeRequest({ conceptA: `Concept${i}`, conceptB: 'Pizza' }))
+      }
+      const res = await handler(makeRequest({ conceptA: 'Extra', conceptB: 'Pizza' }))
+      const body = await res.json()
+      expect(body.message).toContain('Too many investigations')
+    })
+
+    it('rate limits by IP from x-nf-client-connection-ip header', async () => {
+      // Exhaust limit for IP 1.2.3.4
+      for (let i = 0; i < 20; i++) {
+        const req = new Request('http://localhost/.netlify/functions/generate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-nf-client-connection-ip': '1.2.3.4',
+          },
+          body: JSON.stringify({ conceptA: `A${i}`, conceptB: 'B' }),
+        })
+        await handler(req)
+      }
+
+      // IP 1.2.3.4 should be rate limited
+      const limitedReq = new Request('http://localhost/.netlify/functions/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-nf-client-connection-ip': '1.2.3.4',
+        },
+        body: JSON.stringify({ conceptA: 'Extra', conceptB: 'B' }),
+      })
+      const limitedRes = await handler(limitedReq)
+      expect(limitedRes.status).toBe(429)
+
+      // Different IP should still work
+      const otherReq = new Request('http://localhost/.netlify/functions/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-nf-client-connection-ip': '5.6.7.8',
+        },
+        body: JSON.stringify({ conceptA: 'Cats', conceptB: 'Pizza' }),
+      })
+      const otherRes = await handler(otherReq)
+      expect(otherRes.status).toBe(200)
     })
   })
 

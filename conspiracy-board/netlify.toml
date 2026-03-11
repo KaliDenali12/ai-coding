@@ -3,6 +3,12 @@
   publish = "dist"
   functions = "netlify/functions"
 
+[functions]
+  # Anthropic API calls typically take 5-12s. Default 10s is too tight.
+  # Our SDK timeout is 25s; this gives the function time to return a
+  # structured error response instead of being force-killed by Netlify.
+  timeout = 26
+
 [dev]
   command = "npm run dev"
   targetPort = 5173

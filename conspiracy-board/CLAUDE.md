@@ -102,7 +102,8 @@ No other env vars needed.
 - **Flow**: Validate inputs → server-side blocklist → construct Claude prompt → call API → validate JSON → return
 - **Anthropic SDK**: Uses `new Anthropic()` which reads `ANTHROPIC_API_KEY` from env automatically
 - **Model**: `claude-sonnet-4-20250514` with `max_tokens: 4000`
-- **Response validation**: Chain must have exactly 7 items, each with title/emoji/font_category/teaser/briefing
+- **Response validation**: Chain must have exactly 7 items, each with title/emoji/font_category/teaser/briefing. Length limits enforced: title ≤ 100, emoji ≤ 20, teaser ≤ 500, briefing ≤ 5000 chars (both server and client validators).
+- **Request size limit**: 10KB enforced by reading actual body (`request.text()`) — not the Content-Length header
 - **Error responses**: Themed messages, never leak raw API errors
 
 ### Content Safety (3 Layers)

@@ -32,7 +32,7 @@ Chain has exactly 7 items: item[0] = concept A, items[1-5] = intermediate steps,
 | 400 | `validation` | Missing/invalid inputs, same concepts, malformed JSON body |
 | 400 | `blocked` | Blocklisted content |
 | 405 | `method_not_allowed` | Non-POST method |
-| 413 | `validation` | Request body > 10KB |
+| 413 | `validation` | Request body > 10KB (checked via actual body size, not Content-Length header) |
 | 500 | `server_error` | Claude API failure, unknown errors |
 | 502 | `invalid_response` | Claude returned malformed JSON |
 
@@ -76,6 +76,7 @@ const message = await client.messages.create({
 ### Validation (server-side)
 Mirrors client validation: 7 items, all fields present, valid font categories.
 Server uses its own `FONT_CATEGORIES` const (not imported from shared types).
+Length limits on response fields (enforced in both server and client validators): title ≤ 100, emoji ≤ 20, teaser ≤ 500, briefing ≤ 5000 chars.
 
 ## Data Types (src/types/conspiracy.ts)
 ```typescript

@@ -27,11 +27,12 @@ describe('generateConspiracy', () => {
 
     await generateConspiracy({ conceptA: 'Cats', conceptB: 'Pizza' })
 
-    expect(mockFetch).toHaveBeenCalledWith('/.netlify/functions/generate', {
+    expect(mockFetch).toHaveBeenCalledWith('/.netlify/functions/generate', expect.objectContaining({
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ conceptA: 'Cats', conceptB: 'Pizza' }),
-    })
+      signal: expect.any(AbortSignal),
+    }))
   })
 
   it('returns validated chain data on success', async () => {

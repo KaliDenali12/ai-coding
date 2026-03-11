@@ -71,11 +71,16 @@ export async function generateConspiracy(
   request: GenerateRequest,
   signal?: AbortSignal,
 ): Promise<ConspiracyChain> {
+  // Defense-in-depth: 30s hard timeout if no signal provided by caller.
+  // Normal path gets a signal from App.tsx (15s via LoadingScreen), so this
+  // only fires if generateConspiracy is called without one.
+  const effectiveSignal = signal ?? AbortSignal.timeout(30_000)
+
   const response = await fetch('/.netlify/functions/generate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(request),
-    signal,
+    signal: effectiveSignal,
   })
 
   if (!response.ok) {

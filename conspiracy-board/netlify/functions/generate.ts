@@ -269,7 +269,11 @@ export default async (request: Request): Promise<Response> => {
     }
 
     // Call Claude API
-    const client = new Anthropic()
+    // Explicit timeout: Anthropic SDK defaults to 10 minutes, which far exceeds
+    // Netlify's function timeout (10-26s). Without this, the function hangs until
+    // Netlify force-kills it, returning no error response to the client.
+    const apiTimeoutMs = Number(process.env.ANTHROPIC_TIMEOUT_MS) || 25_000
+    const client = new Anthropic({ timeout: apiTimeoutMs })
 
     const message = await client.messages.create({
       model: 'claude-sonnet-4-20250514',
@@ -309,7 +313,33 @@ export default async (request: Request): Promise<Response> => {
   } catch (error) {
     const errorName = error instanceof Error ? error.name : 'UnknownError'
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-    console.error(`Generate function error: [${errorName}] ${errorMessage}`)
+
+    // Differentiate Anthropic SDK errors for accurate status codes and logging.
+    // Uses error.status (set by the SDK) instead of instanceof to remain
+    // compatible with module mocking in tests.
+    const sdkStatus = (error as { status?: number }).status
+    if (errorName === 'APIConnectionTimeoutError' || (errorName === 'APIConnectionError' && errorMessage.includes('timed out'))) {
+      console.error('Anthropic API timeout:', errorMessage)
+      return jsonResponse({
+        error: 'server_error',
+        message: 'Our sources are currently unreachable. Please try again in a moment.',
+      }, 504)
+    }
+
+    if (sdkStatus === 429) {
+      console.error('Anthropic API rate limited:', errorMessage)
+      return jsonResponse({
+        error: 'server_error',
+        message: 'Our intelligence network is overwhelmed. Please try again shortly.',
+      }, 503)
+    }
+
+    if (sdkStatus === 401) {
+      console.error('CRITICAL — Anthropic API authentication failed:', errorMessage)
+    } else {
+      console.error(`Generate function error: [${errorName}] ${errorMessage}`)
+    }
+
     const isValidation = errorMessage.includes('node ') || errorMessage.includes('chain must') || errorMessage.includes('missing ')
 
     return jsonResponse({

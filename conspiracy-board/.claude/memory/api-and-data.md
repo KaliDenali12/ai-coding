@@ -34,8 +34,10 @@ Chain has exactly 7 items: item[0] = concept A, items[1-5] = intermediate steps,
 | 405 | `method_not_allowed` | Non-POST method |
 | 413 | `validation` | Request body > 10KB (checked via actual body size, not Content-Length header) |
 | 429 | `rate_limited` | Exceeded 20 requests per 15-minute window for this IP |
-| 500 | `server_error` | Claude API failure, unknown errors |
+| 500 | `server_error` | Auth failure, unknown errors |
 | 502 | `invalid_response` | Claude returned malformed JSON |
+| 503 | `server_error` | Anthropic API rate limited (upstream) |
+| 504 | `server_error` | Anthropic API timeout |
 
 All errors return `{ error, message }`. Message is always themed (never leaks raw API errors).
 
@@ -43,7 +45,7 @@ All errors return `{ error, message }`. Message is always themed (never leaks ra
 
 ### generateConspiracy(request, signal?)
 - Fetches `/.netlify/functions/generate` (Netlify redirects `/api/*` in netlify.toml)
-- Optional `AbortSignal` parameter for request cancellation (wired from App.tsx)
+- Optional `AbortSignal` parameter for request cancellation (wired from App.tsx). Falls back to `AbortSignal.timeout(30_000)` if no signal provided.
 - On non-200: parses error JSON (with fallback), throws `ApiError` with statusCode
 - On 200: parses JSON (with try/catch — throws `ApiError` on malformed JSON), validates via `validateChainResponse()`, returns typed data
 
@@ -64,7 +66,8 @@ Custom error with `statusCode` property. Used in App.tsx for error handling.
 
 ### Anthropic SDK Usage
 ```typescript
-const client = new Anthropic() // Reads ANTHROPIC_API_KEY from env
+const apiTimeoutMs = Number(process.env.ANTHROPIC_TIMEOUT_MS) || 25_000
+const client = new Anthropic({ timeout: apiTimeoutMs }) // Reads ANTHROPIC_API_KEY from env
 const message = await client.messages.create({
   model: 'claude-sonnet-4-20250514',
   max_tokens: 4000,
@@ -72,7 +75,9 @@ const message = await client.messages.create({
   messages: [{ role: 'user', content: `Connect: "${a}" and "${b}"` }],
 })
 ```
-System prompt uses `cache_control: { type: 'ephemeral' }` for Anthropic prompt caching (90% discount on cached input tokens).
+- System prompt uses `cache_control: { type: 'ephemeral' }` for Anthropic prompt caching (90% discount on cached input tokens).
+- SDK timeout set to 25s (configurable via `ANTHROPIC_TIMEOUT_MS`). SDK default of 10min is too long for serverless.
+- Error catch block classifies SDK errors by `error.name` and `error.status` (not `instanceof` — avoids issues with module mocking in tests).
 
 ### Response Processing
 1. Extract text block from `message.content` array

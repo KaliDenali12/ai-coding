@@ -8,6 +8,7 @@ Conspiracy Board: comedic AI web app connecting two concepts via a 7-node conspi
 - **Audit reports**: `audit-reports/TEST_ARCHITECTURE_REPORT_001_2026-03-10.md`, `TEST_CONSOLIDATION_REPORT_001_2026-03-10.md`, `TEST_QUALITY_REPORT_001_2026-03-10.md` — see `testing.md` for antipatterns.
 - **Known bugs**: BUG-002 (FIXED), BUG-003 (FIXED). Both resolved in security audit 2026-03-10. No known unfixed bugs.
 - **Security audit**: `audit-reports/08_SECURITY_AUDIT_REPORT_001_2026-03-10_1545.md` — 7 fixes applied, 1 unfixed (rate limiting needs external infra). Security headers in `netlify.toml`, `.npmrc` with `ignore-scripts=true`, `npm audit` in build pipeline.
+- **Resilience audit**: `audit-reports/20_ERROR_RECOVERY_REPORT_01_2026-03-11_2045.md` — Added SDK timeout (25s, was 10min default), error classification (504/503/500), client fetch fallback timeout, Netlify function timeout (26s).
 - **Deploy URL**: TBD (needs Netlify setup + `ANTHROPIC_API_KEY`)
 - **Status**: All P0/P1 features complete. P2 remaining: share/export, sound effects.
 - **Branch**: `master`

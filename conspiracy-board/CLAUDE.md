@@ -83,8 +83,7 @@ npx tsc --noEmit           # Type check only
 | Variable | Where | Purpose |
 |----------|-------|---------|
 | `ANTHROPIC_API_KEY` | Netlify dashboard / `.env` local | Claude API key (never client-side) |
-
-No other env vars needed.
+| `ANTHROPIC_TIMEOUT_MS` | Netlify dashboard / `.env` local | SDK timeout in ms (default 25000). Optional. |
 
 ## Architectural Rules
 
@@ -101,12 +100,13 @@ No other env vars needed.
 - **Single endpoint**: `POST /.netlify/functions/generate` (redirected from `/api/generate`)
 - **Flow**: Rate limit check → validate inputs → server-side blocklist → construct Claude prompt → call API → validate JSON → return
 - **Rate limiting**: Per-IP, 20 requests per 15-minute window. In-memory (resets on cold start). Extracts IP from `x-nf-client-connection-ip` or `x-forwarded-for`. Returns 429 with themed message. `_resetRateLimiter()` exported for test isolation.
-- **Anthropic SDK**: Uses `new Anthropic()` which reads `ANTHROPIC_API_KEY` from env automatically
+- **Anthropic SDK**: Uses `new Anthropic({ timeout: 25_000 })` — reads `ANTHROPIC_API_KEY` from env automatically. Timeout is configurable via `ANTHROPIC_TIMEOUT_MS` env var (default 25s). SDK default of 10 minutes is too long for serverless.
 - **Prompt caching**: System prompt uses `cache_control: { type: 'ephemeral' }` for Anthropic prompt caching (90% input token discount on cache hits)
 - **Model**: `claude-sonnet-4-20250514` with `max_tokens: 4000`
 - **Response validation**: Chain must have exactly 7 items, each with title/emoji/font_category/teaser/briefing. Length limits enforced: title ≤ 100, emoji ≤ 20, teaser ≤ 500, briefing ≤ 5000 chars (both server and client validators).
 - **Request size limit**: 10KB enforced by reading actual body (`request.text()`) — not the Content-Length header
-- **Error responses**: Themed messages, never leak raw API errors
+- **Error responses**: Themed messages, never leak raw API errors. Anthropic SDK errors are classified: timeout → 504, rate limit → 503, auth → 500 with CRITICAL log, validation → 502, other → 500.
+- **Function timeout**: Set to 26s in `netlify.toml` `[functions]` block (Netlify default is 10s, too tight for Anthropic calls).
 
 ### Content Safety (3 Layers)
 1. **Client blocklist** (`src/lib/blocklist.ts`): Normalizes input (leet-speak substitution), checks against blocked terms

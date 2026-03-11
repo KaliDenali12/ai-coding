@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from 'react'
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import type { ConspiracyChain } from '@/types/conspiracy.ts'
 import { PolaroidCard } from './PolaroidCard.tsx'
@@ -38,12 +38,20 @@ export function Corkboard({ data, onNewInvestigation }: CorkboardProps) {
     height: typeof window !== 'undefined' ? window.innerHeight : 720,
   })
 
+  const resizeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   useEffect(() => {
     function handleResize() {
-      setViewportSize({ width: window.innerWidth, height: window.innerHeight })
+      if (resizeTimerRef.current) clearTimeout(resizeTimerRef.current)
+      resizeTimerRef.current = setTimeout(() => {
+        setViewportSize({ width: window.innerWidth, height: window.innerHeight })
+      }, 150)
     }
     window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
+    return () => {
+      window.removeEventListener('resize', handleResize)
+      if (resizeTimerRef.current) clearTimeout(resizeTimerRef.current)
+    }
   }, [])
 
   const isMobile = viewportSize.width < 768

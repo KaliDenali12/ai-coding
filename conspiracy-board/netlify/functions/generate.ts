@@ -156,12 +156,16 @@ function validateResponse(data: unknown): ChainResponse {
   for (let i = 0; i < obj.chain.length; i++) {
     const node = obj.chain[i] as Record<string, unknown>
     if (typeof node.title !== 'string' || !node.title) throw new Error(`node ${i}: missing title`)
+    if ((node.title as string).length > 100) throw new Error(`node ${i}: title too long`)
     if (typeof node.emoji !== 'string' || !node.emoji) throw new Error(`node ${i}: missing emoji`)
+    if ((node.emoji as string).length > 20) throw new Error(`node ${i}: emoji too long`)
     if (typeof node.font_category !== 'string' || !(FONT_CATEGORIES as readonly string[]).includes(node.font_category)) {
       throw new Error(`node ${i}: invalid font_category`)
     }
     if (typeof node.teaser !== 'string' || !node.teaser) throw new Error(`node ${i}: missing teaser`)
+    if ((node.teaser as string).length > 500) throw new Error(`node ${i}: teaser too long`)
     if (typeof node.briefing !== 'string' || !node.briefing) throw new Error(`node ${i}: missing briefing`)
+    if ((node.briefing as string).length > 5000) throw new Error(`node ${i}: briefing too long`)
   }
 
   return data as ChainResponse
@@ -174,14 +178,20 @@ export default async (request: Request): Promise<Response> => {
   }
 
   try {
-    const contentLength = request.headers.get('content-length')
-    if (contentLength && parseInt(contentLength, 10) > 10_000) {
+    let rawBody: string
+    try {
+      rawBody = await request.text()
+    } catch {
+      return jsonResponse({ error: 'validation', message: 'Could not read request body.' }, 400)
+    }
+
+    if (rawBody.length > 10_000) {
       return jsonResponse({ error: 'validation', message: 'Request too large.' }, 413)
     }
 
     let body: { conceptA?: string; conceptB?: string }
     try {
-      body = await request.json() as { conceptA?: string; conceptB?: string }
+      body = JSON.parse(rawBody) as { conceptA?: string; conceptB?: string }
     } catch {
       return jsonResponse({ error: 'validation', message: 'Invalid JSON in request body.' }, 400)
     }

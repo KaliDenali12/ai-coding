@@ -35,8 +35,14 @@ export function validateChainResponse(data: unknown): ConspiracyChain {
     if (typeof node.title !== 'string' || !node.title) {
       throw new Error(`Invalid node ${i}: missing title`)
     }
+    if ((node.title as string).length > 100) {
+      throw new Error(`Invalid node ${i}: title too long`)
+    }
     if (typeof node.emoji !== 'string' || !node.emoji) {
       throw new Error(`Invalid node ${i}: missing emoji`)
+    }
+    if ((node.emoji as string).length > 20) {
+      throw new Error(`Invalid node ${i}: emoji too long`)
     }
     if (
       typeof node.font_category !== 'string' ||
@@ -47,8 +53,14 @@ export function validateChainResponse(data: unknown): ConspiracyChain {
     if (typeof node.teaser !== 'string' || !node.teaser) {
       throw new Error(`Invalid node ${i}: missing teaser`)
     }
+    if ((node.teaser as string).length > 500) {
+      throw new Error(`Invalid node ${i}: teaser too long`)
+    }
     if (typeof node.briefing !== 'string' || !node.briefing) {
       throw new Error(`Invalid node ${i}: missing briefing`)
+    }
+    if ((node.briefing as string).length > 5000) {
+      throw new Error(`Invalid node ${i}: briefing too long`)
     }
   }
 

@@ -45,6 +45,7 @@ function App() {
   }, [])
 
   const handleRetry = useCallback(() => {
+    setBoardData(null)
     setScreen('landing')
   }, [])
 

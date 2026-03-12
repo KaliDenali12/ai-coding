@@ -76,7 +76,6 @@ export function LoadingScreen({ onTimeout }: LoadingScreenProps) {
       {showStamp && (
         <motion.div
           className="animate-stamp font-typewriter text-5xl md:text-7xl text-landing-accent/80 border-4 border-landing-accent/80 px-6 py-2 mb-10 select-none"
-          style={{ transform: 'rotate(-15deg)' }}
           data-testid="classified-stamp"
           aria-hidden="true"
         >

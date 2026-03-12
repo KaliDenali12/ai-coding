@@ -23,7 +23,7 @@ export function PolaroidCard({
 
   const cardContent = (
     <div
-      className="perspective cursor-pointer"
+      className="perspective cursor-pointer focus:outline-none focus:ring-2 focus:ring-white/50 focus:ring-offset-2 rounded-sm"
       onClick={onClick}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -79,7 +79,7 @@ export function PolaroidCard({
 
         {/* Back Face */}
         <div
-          className="backface-hidden absolute inset-0 bg-amber-50 rounded-sm shadow-lg p-4 overflow-y-auto"
+          className="backface-hidden absolute inset-0 bg-polaroid-cream rounded-sm shadow-lg p-4 overflow-y-auto"
           style={{ transform: 'rotateY(180deg)' }}
           data-testid="polaroid-back"
         >
@@ -129,6 +129,7 @@ export function PolaroidCard({
         damping: 20,
       }}
       whileHover={{ scale: 1.03, zIndex: 50 }}
+      whileTap={{ scale: 0.97 }}
       className="w-[150px] h-[210px] md:w-[200px] md:h-[280px]"
     >
       {cardContent}

@@ -18,6 +18,7 @@ export function CaseFileStamp({
       animate={{ opacity: 0.7, scale: 1, rotate: -12 }}
       transition={{ delay, duration: 0.4, type: 'spring', stiffness: 300, damping: 20 }}
       data-testid="case-file-stamp"
+      aria-hidden="true"
     >
       <div className="font-typewriter text-right">
         <div className="text-landing-accent text-lg md:text-2xl font-bold border-2 border-landing-accent px-3 py-1 inline-block mb-1">

@@ -5,6 +5,7 @@ import type { ConspiracyChain } from '@/types/conspiracy.ts'
 import { FAIL_THRESHOLD_MS } from '@/lib/constants.ts'
 
 vi.mock('framer-motion', () => ({
+  useReducedMotion: () => false,
   motion: {
     div: ({ children, ...props }: React.PropsWithChildren<Record<string, unknown>>) => {
       const safe: Record<string, unknown> = {}

@@ -2,29 +2,25 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { ErrorScreen } from '../ErrorScreen.tsx'
 
+const motionProps = ['initial', 'animate', 'exit', 'transition', 'whileHover', 'whileTap']
+function filterProps(props: Record<string, unknown>) {
+  const safe: Record<string, unknown> = {}
+  for (const [k, v] of Object.entries(props)) {
+    if (!motionProps.includes(k)) safe[k] = v
+  }
+  return safe
+}
+
 vi.mock('framer-motion', () => ({
   motion: {
-    div: ({ children, ...props }: React.PropsWithChildren<Record<string, unknown>>) => {
-      const safe: Record<string, unknown> = {}
-      for (const [k, v] of Object.entries(props)) {
-        if (!['initial', 'animate', 'exit', 'transition', 'whileHover', 'whileTap'].includes(k)) safe[k] = v
-      }
-      return <div {...safe}>{children}</div>
-    },
-    p: ({ children, ...props }: React.PropsWithChildren<Record<string, unknown>>) => {
-      const safe: Record<string, unknown> = {}
-      for (const [k, v] of Object.entries(props)) {
-        if (!['initial', 'animate', 'exit', 'transition'].includes(k)) safe[k] = v
-      }
-      return <p {...safe}>{children}</p>
-    },
-    button: ({ children, ...props }: React.PropsWithChildren<Record<string, unknown>>) => {
-      const safe: Record<string, unknown> = {}
-      for (const [k, v] of Object.entries(props)) {
-        if (!['initial', 'animate', 'exit', 'transition', 'whileHover', 'whileTap'].includes(k)) safe[k] = v
-      }
-      return <button {...safe}>{children}</button>
-    },
+    div: ({ children, ...props }: React.PropsWithChildren<Record<string, unknown>>) =>
+      <div {...filterProps(props)}>{children}</div>,
+    h1: ({ children, ...props }: React.PropsWithChildren<Record<string, unknown>>) =>
+      <h1 {...filterProps(props)}>{children}</h1>,
+    p: ({ children, ...props }: React.PropsWithChildren<Record<string, unknown>>) =>
+      <p {...filterProps(props)}>{children}</p>,
+    button: ({ children, ...props }: React.PropsWithChildren<Record<string, unknown>>) =>
+      <button {...filterProps(props)}>{children}</button>,
   },
 }))
 

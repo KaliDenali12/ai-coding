@@ -55,7 +55,7 @@ function App() {
   }, [])
 
   return (
-    <div className="h-full w-full" data-testid="app-root">
+    <main className="h-full w-full" data-testid="app-root">
       <AnimatePresence mode="wait">
         {screen === 'landing' && (
           <LandingScreen
@@ -85,7 +85,7 @@ function App() {
           />
         )}
       </AnimatePresence>
-    </div>
+    </main>
   )
 }
 

@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 import type { ConspiracyChain } from '@/types/conspiracy.ts'
 import { PolaroidCard } from './PolaroidCard.tsx'
 import { RedString } from './RedString.tsx'
@@ -31,8 +31,9 @@ interface CorkboardProps {
 }
 
 export function Corkboard({ data, onNewInvestigation }: CorkboardProps) {
+  const prefersReducedMotion = useReducedMotion()
   const [flippedIndex, setFlippedIndex] = useState<number | null>(null)
-  const [revealComplete, setRevealComplete] = useState(false)
+  const [revealComplete, setRevealComplete] = useState(prefersReducedMotion ?? false)
   const [viewportSize, setViewportSize] = useState({
     width: typeof window !== 'undefined' ? window.innerWidth : 1280,
     height: typeof window !== 'undefined' ? window.innerHeight : 720,
@@ -82,13 +83,17 @@ export function Corkboard({ data, onNewInvestigation }: CorkboardProps) {
 
   // Mark reveal complete after all animations finish
   useEffect(() => {
+    if (prefersReducedMotion) {
+      setRevealComplete(true)
+      return
+    }
     const totalDuration =
       data.chain.length * STEP_DURATION +
       REVEAL_CARD_DELAY_MS +
       500 // Extra buffer for stamp
     const timer = setTimeout(() => setRevealComplete(true), totalDuration)
     return () => clearTimeout(timer)
-  }, [data.chain.length])
+  }, [data.chain.length, prefersReducedMotion])
 
   const handleCardClick = useCallback(
     (index: number) => {
@@ -106,6 +111,15 @@ export function Corkboard({ data, onNewInvestigation }: CorkboardProps) {
     },
     [],
   )
+
+  // Escape key to unflip cards
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setFlippedIndex(null)
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [])
 
   // Generate string paths between consecutive cards
   const stringPaths = useMemo(() => {
@@ -134,6 +148,7 @@ export function Corkboard({ data, onNewInvestigation }: CorkboardProps) {
         className="absolute inset-0 w-full pointer-events-none z-0"
         style={{ height: isMobile ? `${boardHeight}px` : '100%' }}
         data-testid="string-layer"
+        aria-hidden="true"
       >
         {stringPaths.map((path, i) => (
           <RedString
@@ -141,7 +156,7 @@ export function Corkboard({ data, onNewInvestigation }: CorkboardProps) {
             path={path}
             delay={getStringDelay(i)}
             duration={REVEAL_STRING_DURATION_MS}
-            animate={true}
+            animate={!prefersReducedMotion}
           />
         ))}
       </svg>
@@ -162,7 +177,7 @@ export function Corkboard({ data, onNewInvestigation }: CorkboardProps) {
             onClick={() => handleCardClick(i)}
             rotation={positions[i]?.rotation ?? 0}
             delay={getCardDelay(i) / 1000}
-            animate={true}
+            animate={!prefersReducedMotion}
           />
         </div>
       ))}
@@ -171,7 +186,7 @@ export function Corkboard({ data, onNewInvestigation }: CorkboardProps) {
       <CaseFileStamp
         caseFileNumber={data.case_file_number}
         classificationLevel={data.classification_level}
-        delay={getCardDelay(data.chain.length - 1) / 1000 + 0.8}
+        delay={prefersReducedMotion ? 0 : getCardDelay(data.chain.length - 1) / 1000 + 0.8}
       />
 
       {/* New Investigation Button */}

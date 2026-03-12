@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react'
 
 // Mock framer-motion
 vi.mock('framer-motion', () => ({
+  useReducedMotion: () => false,
   motion: {
     div: ({ children, ...props }: React.PropsWithChildren<Record<string, unknown>>) => {
       const safe: Record<string, unknown> = {}

@@ -9,7 +9,7 @@
 
 ## Commands
 ```bash
-npm test              # vitest run (272+ tests)
+npm test              # vitest run (279+ tests)
 npm run test:watch    # vitest watch mode
 npm run test:coverage # vitest with coverage
 ```
@@ -32,7 +32,7 @@ npm run test:coverage # vitest with coverage
 
 ### High — Avoid Repeating
 - **Consolidation completed (2026-03-10)**: 43 duplicate tests removed. `generate-handler.test.ts` trimmed to 3 unique tests; `fonts.test.ts` deleted; shallow files (`blocklist.test.ts`, `layout.test.ts`, `api.test.ts`) trimmed to unique-only tests. **Rule**: Don't add tests to shallow files if the `-deep` or `-contract` file already covers that behavior. Check the deep file first.
-- **Framer-motion mock is copy-pasted across 10 test files** (~50 lines each). Should be extracted to shared setup but hasn't been yet. If you change the mock pattern, you must update all 10 files.
+- **Framer-motion mock is copy-pasted across 10 test files** (~50 lines each). Should be extracted to shared setup but hasn't been yet. If you change the mock pattern, you must update all 10 files. **Important**: Any test that renders `Corkboard` (directly or transitively via `App`) must include `useReducedMotion: () => false` in the framer-motion mock — currently needed in: `Corkboard.test.tsx`, `App.test.tsx`, `App-integration-deep.test.tsx`, `smoke.test.tsx`.
 - **`ApiError` class is re-implemented in 3 test files** (App.test, smoke.test, App-integration-deep.test) instead of imported. Could diverge from production class.
 
 ### Low — Awareness
@@ -47,6 +47,7 @@ npm run test:coverage # vitest with coverage
 Every component test mocks `framer-motion` to strip animation props:
 ```typescript
 vi.mock('framer-motion', () => ({
+  useReducedMotion: () => false, // Required for tests rendering Corkboard
   motion: new Proxy({}, {
     get: (_, tag) => React.forwardRef((props, ref) => {
       // Filter animation-specific props, render as plain HTML

@@ -69,6 +69,8 @@ export function LoadingScreen({ onTimeout }: LoadingScreenProps) {
       exit={{ opacity: 0 }}
       transition={{ duration: 0.4 }}
       data-testid="loading-screen"
+      role="status"
+      aria-label="Loading investigation results"
     >
       {/* CLASSIFIED Stamp */}
       {showStamp && (
@@ -76,13 +78,14 @@ export function LoadingScreen({ onTimeout }: LoadingScreenProps) {
           className="animate-stamp font-typewriter text-5xl md:text-7xl text-landing-accent/80 border-4 border-landing-accent/80 px-6 py-2 mb-10 select-none"
           style={{ transform: 'rotate(-15deg)' }}
           data-testid="classified-stamp"
+          aria-hidden="true"
         >
           CLASSIFIED
         </motion.div>
       )}
 
       {/* Redacted lines */}
-      <div className="flex flex-col gap-2 mb-8 w-64" data-testid="redacted-lines">
+      <div className="flex flex-col gap-2 mb-8 w-64" data-testid="redacted-lines" aria-hidden="true">
         {[0.8, 1, 0.6, 0.9, 0.5].map((width, i) => (
           <motion.div
             key={i}
@@ -113,6 +116,7 @@ export function LoadingScreen({ onTimeout }: LoadingScreenProps) {
           exit={{ opacity: 0, y: -10 }}
           transition={{ duration: 0.3 }}
           data-testid="loading-message"
+          aria-live="polite"
         >
           {getMessage()}
         </motion.p>
@@ -121,6 +125,7 @@ export function LoadingScreen({ onTimeout }: LoadingScreenProps) {
       {/* Blinking cursor */}
       <motion.span
         className="inline-block w-2 h-5 bg-landing-accent mt-4"
+        aria-hidden="true"
         animate={{ opacity: [1, 0, 1] }}
         transition={{ duration: 1, repeat: Infinity }}
       />

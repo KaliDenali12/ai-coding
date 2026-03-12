@@ -5,6 +5,7 @@ import App from '../App.tsx'
 
 // Mock framer-motion for all components
 vi.mock('framer-motion', () => ({
+  useReducedMotion: () => false,
   motion: {
     div: ({ children, ...props }: React.PropsWithChildren<Record<string, unknown>>) => {
       const safe: Record<string, unknown> = {}

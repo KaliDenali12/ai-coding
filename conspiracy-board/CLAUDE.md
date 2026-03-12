@@ -73,7 +73,7 @@ npm run dev                # Vite dev server (port 5173)
 npx netlify dev            # Dev with Netlify Functions
 npm run build              # tsc -b && vite build → dist/
 npm run lint               # eslint (flat config, must pass)
-npm test                   # vitest run (276+ tests)
+npm test                   # vitest run (279+ tests)
 npm run test:watch         # vitest watch mode
 npx tsc --noEmit           # Type check only
 ```
@@ -181,6 +181,10 @@ No database. Single API response type — see `src/types/conspiracy.ts`:
 - Icon-only buttons: `aria-label` required
 - Decorative elements: `alt=""` or `aria-hidden`
 - Error messages: `role="alert"` for screen reader announcement (already on ErrorScreen + LandingScreen)
+- **Reduced motion**: `prefers-reduced-motion` is respected at two levels:
+  - **CSS**: `@media (prefers-reduced-motion: reduce)` in `index.css` disables `.animate-stamp` keyframe and makes `.preserve-3d` transition instant
+  - **JS**: `useReducedMotion()` from framer-motion in `Corkboard.tsx` — skips card/string reveal animations (`animate={false}`), zeroes CaseFileStamp delay, and immediately sets `revealComplete=true`
+- **Escape key**: Pressing Escape on the corkboard dismisses any flipped card (document-level `keydown` listener in `Corkboard.tsx`)
 
 ## Key Pitfalls
 

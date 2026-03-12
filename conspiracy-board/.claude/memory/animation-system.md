@@ -56,6 +56,12 @@ Cards are NOT interactive until `revealComplete = true`.
 - `whileTap={{ scale: 0.98 }}` on buttons
 - Spring animation: `stiffness: 200, damping: 20` for card entrance
 
+## Reduced Motion Support
+When `prefers-reduced-motion` is active:
+- **CSS layer** (`index.css`): `.animate-stamp` keyframe disabled, `.preserve-3d` transition set to 0.01ms
+- **JS layer** (`Corkboard.tsx`): `useReducedMotion()` hook → passes `animate={false}` to PolaroidCard and RedString, sets CaseFileStamp delay to 0, immediately marks `revealComplete=true`
+- Escape key also dismisses flipped cards (document-level `keydown` listener)
+
 ## Common Mistakes
 - Don't add Framer Motion `animate` prop to elements that already use CSS transitions (card flip uses CSS, not FM)
 - String visibility is boolean state, not Framer Motion — don't try to use FM for stroke-dash

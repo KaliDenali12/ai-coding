@@ -85,3 +85,16 @@ body {
 .animate-stamp {
   animation: stamp-slam 0.4s ease-out forwards;
 }
+
+/* Respect reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .animate-stamp {
+    animation: none;
+    transform: scale(1) rotate(-15deg);
+    opacity: 0.8;
+  }
+
+  .preserve-3d {
+    transition-duration: 0.01ms !important;
+  }
+}

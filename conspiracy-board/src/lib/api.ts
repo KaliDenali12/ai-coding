@@ -95,7 +95,7 @@ export async function generateConspiracy(
   try {
     data = await response.json()
   } catch {
-    throw new ApiError('Our server returned an unreadable response. Please try again.', response.status)
+    throw new ApiError('Our server returned an unreadable response. Please try again.', 502)
   }
   return validateChainResponse(data)
 }

@@ -213,7 +213,7 @@ No database. Single API response type — see `src/types/conspiracy.ts`:
 - **Stamp rotation**: CLASSIFIED stamps use CSS `animate-stamp` keyframe which includes `rotate(-15deg)` in all keyframes. Do NOT add inline `style={{ transform: 'rotate(-15deg)' }}` — it's redundant during animation and the `prefers-reduced-motion` CSS fallback already sets the rotation.
 - **Resize debounce**: `Corkboard.tsx` resize handler is debounced (150ms). Do not remove — without it, resize fires at 60fps and re-renders all cards/strings every frame.
 - **Seeded random**: Layout uses deterministic seeded random from case file number hash. Same inputs always produce same layout.
-- **ErrorBoundary**: Wraps `<App />` in `main.tsx`. Catches render crashes and shows `ErrorScreen` with recovery. Class component (React requirement for error boundaries).
+- **ErrorBoundary**: Wraps `<App />` in `main.tsx`. Catches render crashes and shows `ErrorScreen` with recovery. Class component (React requirement for error boundaries). Uses `recoveryCount` + Fragment key to force full App remount on retry — without this, App's useState hooks persist crash-causing state.
 
 ## Common Recipes
 
@@ -247,7 +247,7 @@ board ──(new investigation)──→ landing ←─────────�
 
 - `App.tsx` owns all state transitions via `useCallback` handlers
 - `AbortController` signal is wired through `generateConspiracy()` to `fetch()` for proper request cancellation
-- Board data is held in `useState` — reset to `null` on "New Investigation"
+- Board data is held in `useState` — reset to `null` on "New Investigation" and on error retry
 
 ## Known Bugs (Unfixed)
 
@@ -260,6 +260,7 @@ board ──(new investigation)──→ landing ←─────────�
 - ~~**BUG-004a: Framer Motion transform conflict**~~ — **FIXED** in bug hunt 2026-03-12. PolaroidCard used `style.transform` for rotation which was overridden by Framer Motion animations.
 - ~~**BUG-004b: Card flip container had no height**~~ — **FIXED** in bug hunt 2026-03-12. Back face `overflow-y-auto` clipped at 0px. Added explicit card dimensions.
 - ~~**BUG-004c: Blocklist space-insertion bypass**~~ — **FIXED** in bug hunt 2026-03-12. Single-word terms could be bypassed with spaces (e.g. "h itler"). Dual-pass check now catches this.
+- ~~**BUG-STATE-02: ErrorBoundary recovery loop**~~ — **FIXED** in state audit 2026-03-12. After a render crash, retry re-rendered crash-causing state in an infinite loop. Added `recoveryCount` key to force full App remount.
 
 ## What's Not Implemented (P2)
 

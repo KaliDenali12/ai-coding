@@ -110,7 +110,7 @@ export function PolaroidCard({
     return (
       <div
         style={{ transform: `rotate(${rotation}deg)` }}
-        className="w-[150px] md:w-[200px]"
+        className="w-[150px] h-[210px] md:w-[200px] md:h-[280px]"
       >
         {cardContent}
       </div>
@@ -119,8 +119,8 @@ export function PolaroidCard({
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.8, y: -20 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
+      initial={{ opacity: 0, scale: 0.8, y: -20, rotate: rotation }}
+      animate={{ opacity: 1, scale: 1, y: 0, rotate: rotation }}
       transition={{
         delay,
         duration: 0.5,
@@ -129,8 +129,7 @@ export function PolaroidCard({
         damping: 20,
       }}
       whileHover={{ scale: 1.03, zIndex: 50 }}
-      style={{ transform: `rotate(${rotation}deg)` }}
-      className="w-[150px] md:w-[200px]"
+      className="w-[150px] h-[210px] md:w-[200px] md:h-[280px]"
     >
       {cardContent}
     </motion.div>

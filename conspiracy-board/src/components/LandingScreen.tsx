@@ -134,7 +134,7 @@ export function LandingScreen({ onSubmit, initialA = '', initialB = '' }: Landin
       <motion.button
         onClick={handleSubmit}
         disabled={!canSubmit}
-        className="font-typewriter text-lg px-8 py-3 rounded-lg bg-landing-accent text-white uppercase tracking-wider transition-all hover:bg-landing-accent/80 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-landing-accent mb-8"
+        className="font-typewriter text-lg px-8 py-3 rounded-lg bg-landing-accent text-white uppercase tracking-wider transition-all hover:bg-landing-accent/80 focus:outline-none focus:ring-2 focus:ring-landing-accent focus:ring-offset-2 focus:ring-offset-landing-bg disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-landing-accent mb-8"
         whileHover={canSubmit ? { scale: 1.02 } : {}}
         whileTap={canSubmit ? { scale: 0.98 } : {}}
         data-testid="submit-button"
@@ -153,7 +153,7 @@ export function LandingScreen({ onSubmit, initialA = '', initialB = '' }: Landin
           <button
             key={`${pair.a}-${pair.b}`}
             onClick={() => handleChipClick(pair.a, pair.b)}
-            className="font-body text-sm px-4 py-2 rounded-full border border-white/20 text-white/60 hover:text-white hover:border-landing-accent/60 hover:bg-landing-accent/10 transition-all"
+            className="font-body text-sm px-4 py-2 min-h-[44px] items-center rounded-full border border-white/20 text-white/60 hover:text-white hover:border-landing-accent/60 hover:bg-landing-accent/10 focus:outline-none focus:ring-2 focus:ring-landing-accent/60 focus:ring-offset-1 focus:ring-offset-landing-bg transition-all"
             data-testid="example-chip"
           >
             {pair.a} + {pair.b}

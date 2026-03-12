@@ -25,7 +25,6 @@ export function ErrorScreen({ onRetry }: ErrorScreenProps) {
       {errorVariant.style === 'redacted' && (
         <motion.h1
           className="animate-stamp font-typewriter text-4xl md:text-6xl text-landing-accent/80 border-4 border-landing-accent/80 px-6 py-2 mb-8 select-none"
-          style={{ transform: 'rotate(-15deg)' }}
         >
           {errorVariant.heading}
         </motion.h1>
@@ -73,7 +72,7 @@ export function ErrorScreen({ onRetry }: ErrorScreenProps) {
       {/* Retry Button */}
       <motion.button
         onClick={onRetry}
-        className="font-typewriter text-lg px-8 py-3 rounded-lg bg-landing-accent text-white uppercase tracking-wider hover:bg-landing-accent/80 transition-colors"
+        className="font-typewriter text-lg px-8 py-3 rounded-lg bg-landing-accent text-white uppercase tracking-wider hover:bg-landing-accent/80 focus:outline-none focus:ring-2 focus:ring-landing-accent focus:ring-offset-2 focus:ring-offset-landing-bg transition-all"
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
         data-testid="retry-button"

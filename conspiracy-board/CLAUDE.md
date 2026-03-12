@@ -138,7 +138,7 @@ No database. Single API response type — see `src/types/conspiracy.ts`:
 |-------|-------|-------|
 | `--color-cork` | `#b8956a` | Corkboard background |
 | `--color-string-red` | `#8B1A1A` | Yarn-like connecting strings |
-| `--color-polaroid-cream` | `#f5f0e1` | Card photo area |
+| `--color-polaroid-cream` | `#f5f0e1` | Card photo area (front) and back face |
 | `--color-landing-bg` | `#0a0a0a` | Dark landing/error screens |
 | `--color-landing-accent` | `#c0392b` | Red accents, stamps, buttons |
 
@@ -170,6 +170,8 @@ No database. Single API response type — see `src/types/conspiracy.ts`:
 |---------|-------|
 | Card inner sections | `p-4` |
 | Page containers | `p-6` / `px-4` (mobile) |
+| Primary buttons | `px-8 py-3` |
+| Chips | `px-4 py-2 min-h-[44px]` |
 
 ### Two Palettes (NOT a toggle)
 - **Landing / Loading / Error screens**: `bg-landing-bg` (near-black), white text, red accents
@@ -185,6 +187,11 @@ No database. Single API response type — see `src/types/conspiracy.ts`:
   - **CSS**: `@media (prefers-reduced-motion: reduce)` in `index.css` disables `.animate-stamp` keyframe and makes `.preserve-3d` transition instant
   - **JS**: `useReducedMotion()` from framer-motion in `Corkboard.tsx` — skips card/string reveal animations (`animate={false}`), zeroes CaseFileStamp delay, and immediately sets `revealComplete=true`
 - **Escape key**: Pressing Escape on the corkboard dismisses any flipped card (document-level `keydown` listener in `Corkboard.tsx`)
+- **Focus rings**: All buttons and interactive elements have visible `focus:ring-2` styles. Pattern:
+  - On dark backgrounds: `focus:outline-none focus:ring-2 focus:ring-landing-accent focus:ring-offset-2 focus:ring-offset-landing-bg`
+  - On cork background: `focus:outline-none focus:ring-2 focus:ring-white/40 focus:ring-offset-2 focus:ring-offset-cork`
+  - Chips: `focus:ring-landing-accent/60 focus:ring-offset-1`
+  - New interactive elements MUST include focus ring classes following this pattern.
 
 ## Key Pitfalls
 
@@ -203,6 +210,7 @@ No database. Single API response type — see `src/types/conspiracy.ts`:
 - **Animation timing**: Constants in `src/lib/constants.ts` control reveal sequence. Card delay, string duration, entrance time — all interconnected.
 - **Card dimensions**: Hardcoded in `Corkboard.tsx` (layout) AND `PolaroidCard.tsx` (explicit height). `200×280px` desktop, `150×210px` mobile (breakpoint: 768px). Changes must update BOTH files.
 - **PolaroidCard rotation**: Uses Framer Motion `rotate` prop in `initial`/`animate`, NOT `style={{ transform: 'rotate(...)' }}`. Inline `style.transform` conflicts with Framer Motion's animation system. Don't revert to inline transform.
+- **Stamp rotation**: CLASSIFIED stamps use CSS `animate-stamp` keyframe which includes `rotate(-15deg)` in all keyframes. Do NOT add inline `style={{ transform: 'rotate(-15deg)' }}` — it's redundant during animation and the `prefers-reduced-motion` CSS fallback already sets the rotation.
 - **Resize debounce**: `Corkboard.tsx` resize handler is debounced (150ms). Do not remove — without it, resize fires at 60fps and re-renders all cards/strings every frame.
 - **Seeded random**: Layout uses deterministic seeded random from case file number hash. Same inputs always produce same layout.
 - **ErrorBoundary**: Wraps `<App />` in `main.tsx`. Catches render crashes and shows `ErrorScreen` with recovery. Class component (React requirement for error boundaries).

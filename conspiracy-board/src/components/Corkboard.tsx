@@ -199,7 +199,7 @@ export function Corkboard({ data, onNewInvestigation }: CorkboardProps) {
         >
           <button
             onClick={onNewInvestigation}
-            className="font-typewriter text-sm md:text-base px-6 py-2.5 bg-landing-bg/90 text-white border border-white/20 rounded-lg hover:bg-landing-bg hover:border-landing-accent/60 transition-all shadow-lg"
+            className="font-typewriter text-sm md:text-base px-8 py-3 bg-landing-bg/90 text-white border border-white/20 rounded-lg hover:bg-landing-bg hover:border-landing-accent/60 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-white/40 focus:ring-offset-2 focus:ring-offset-cork transition-all shadow-lg"
             data-testid="new-investigation-btn"
           >
             New Investigation

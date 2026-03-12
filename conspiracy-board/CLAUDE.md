@@ -7,7 +7,7 @@ Comedic AI-powered SPA: user enters two concepts, Claude generates a 7-node cons
 - **Always deploy after changes**: Push to `main` on GitHub; Netlify auto-deploys.
 - **Content safety is non-negotiable**: 3-layer safety (client blocklist, server blocklist, Claude system prompt). Every change touching AI output or user input must respect all three.
 - **No partial boards**: Board renders completely or shows a themed error. Never render a half-built chain.
-- **Run tests before committing**: `npm test` (276+ tests, all must pass).
+- **Run tests before committing**: `npm test` (279+ tests, all must pass).
 
 ## Tech Stack
 
@@ -187,7 +187,7 @@ No database. Single API response type — see `src/types/conspiracy.ts`:
 - **Tailwind v4**: No `tailwind.config.ts`. Colors/fonts defined in `@theme` block in `index.css`. Don't create a config file.
 - **Blocklist duplication**: `src/lib/blocklist.ts` and `netlify/functions/generate.ts` have separate copies. Update BOTH.
 - **Validation message divergence (intentional)**: Client `checkInputs()` uses themed messages ("Both fields are required.", "You can't investigate yourself...") while server `generate.ts` uses plain backstop messages ("Both concepts are required.", "Concepts must be different."). This is by design — the client shows user-facing copy, the server is a security fallback for direct API callers. Don't "fix" by making them match.
-- **Blocklist normalization pipeline**: `normalizeInput()` applies: (1) strip zero-width chars, (2) NFKD normalization (fullwidth→ASCII), (3) strip combining marks, (4) lowercase, (5) Cyrillic/Greek confusable→Latin mapping, (6) leet-speak substitution, (7) strip separators `[_.+-]+`, (8) collapse whitespace. Duplicated in both `blocklist.ts` and `generate.ts`.
+- **Blocklist normalization pipeline**: `normalizeInput()` applies: (1) strip zero-width chars, (2) NFKD normalization (fullwidth→ASCII), (3) strip combining marks, (4) lowercase, (5) Cyrillic/Greek confusable→Latin mapping, (6) leet-speak substitution, (7) strip separators `[_.+-]+`, (8) collapse whitespace. Then `isBlocked()` does a dual-pass check: once with spaces (for multi-word terms like "school shooting") and once without spaces (catches space-insertion bypass like "h itler"). Duplicated in both `blocklist.ts` and `generate.ts`.
 - **`.npmrc` has `ignore-scripts=true`**: Supply chain hardening. Netlify build command runs `npm rebuild esbuild` before build since esbuild needs its postinstall script.
 - **Security headers**: Configured in `netlify.toml` `[[headers]]` block — CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy.
 - **Build pipeline security**: `netlify.toml` build command runs `npm audit --audit-level=high` before build. Fails on high/critical advisories.
@@ -197,7 +197,8 @@ No database. Single API response type — see `src/types/conspiracy.ts`:
 - **No public/ directory**: Cork texture is CSS-only (`cork-bg` class). No image files exist.
 - **Font loading**: All 12 fonts loaded in `index.html` `<link>`. Adding a font requires updating both the `<link>` tag and the `@theme` block.
 - **Animation timing**: Constants in `src/lib/constants.ts` control reveal sequence. Card delay, string duration, entrance time — all interconnected.
-- **Card dimensions**: Hardcoded in `Corkboard.tsx` — `200×280px` desktop, `150×210px` mobile (breakpoint: 768px).
+- **Card dimensions**: Hardcoded in `Corkboard.tsx` (layout) AND `PolaroidCard.tsx` (explicit height). `200×280px` desktop, `150×210px` mobile (breakpoint: 768px). Changes must update BOTH files.
+- **PolaroidCard rotation**: Uses Framer Motion `rotate` prop in `initial`/`animate`, NOT `style={{ transform: 'rotate(...)' }}`. Inline `style.transform` conflicts with Framer Motion's animation system. Don't revert to inline transform.
 - **Resize debounce**: `Corkboard.tsx` resize handler is debounced (150ms). Do not remove — without it, resize fires at 60fps and re-renders all cards/strings every frame.
 - **Seeded random**: Layout uses deterministic seeded random from case file number hash. Same inputs always produce same layout.
 - **ErrorBoundary**: Wraps `<App />` in `main.tsx`. Catches render crashes and shows `ErrorScreen` with recovery. Class component (React requirement for error boundaries).
@@ -238,8 +239,15 @@ board ──(new investigation)──→ landing ←─────────�
 
 ## Known Bugs (Unfixed)
 
+- **BUG-005: seededRandom returns [0, 1] inclusive**: `layout.ts:21` divides by `0xffffffff` instead of `0x100000000`. Impact is negligible (positions clamped, rotation off by 0.001 degrees max). Not fixed because changing the divisor alters all board layouts.
+
+### Previously Fixed
+
 - ~~**BUG-002: AbortController signal not wired**~~ — **FIXED** in security audit 2026-03-10. Signal now passed through `generateConspiracy()` to `fetch()`.
 - ~~**BUG-003: Unicode blocklist bypass**~~ — **FIXED** in security audit 2026-03-10. `normalizeInput()` now applies NFKD normalization, strips zero-width characters, and removes combining marks in both `blocklist.ts` and `generate.ts`.
+- ~~**BUG-004a: Framer Motion transform conflict**~~ — **FIXED** in bug hunt 2026-03-12. PolaroidCard used `style.transform` for rotation which was overridden by Framer Motion animations.
+- ~~**BUG-004b: Card flip container had no height**~~ — **FIXED** in bug hunt 2026-03-12. Back face `overflow-y-auto` clipped at 0px. Added explicit card dimensions.
+- ~~**BUG-004c: Blocklist space-insertion bypass**~~ — **FIXED** in bug hunt 2026-03-12. Single-word terms could be bypassed with spaces (e.g. "h itler"). Dual-pass check now catches this.
 
 ## What's Not Implemented (P2)
 

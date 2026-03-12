@@ -134,6 +134,7 @@ export function Corkboard({ data, onNewInvestigation }: CorkboardProps) {
         className="absolute inset-0 w-full pointer-events-none z-0"
         style={{ height: isMobile ? `${boardHeight}px` : '100%' }}
         data-testid="string-layer"
+        aria-hidden="true"
       >
         {stringPaths.map((path, i) => (
           <RedString

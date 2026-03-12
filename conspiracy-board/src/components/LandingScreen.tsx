@@ -97,7 +97,7 @@ export function LandingScreen({ onSubmit, initialA = '', initialB = '' }: Landin
           data-testid="input-a"
         />
 
-        <span className="text-white/40 font-typewriter text-2xl self-center hidden md:block">
+        <span className="text-white/40 font-typewriter text-2xl self-center hidden md:block" aria-hidden="true">
           +
         </span>
 

@@ -23,30 +23,30 @@ export function ErrorScreen({ onRetry }: ErrorScreenProps) {
     >
       {/* Stamp/Heading */}
       {errorVariant.style === 'redacted' && (
-        <motion.div
+        <motion.h1
           className="animate-stamp font-typewriter text-4xl md:text-6xl text-landing-accent/80 border-4 border-landing-accent/80 px-6 py-2 mb-8 select-none"
           style={{ transform: 'rotate(-15deg)' }}
         >
           {errorVariant.heading}
-        </motion.div>
+        </motion.h1>
       )}
 
       {errorVariant.style === 'flickering' && (
-        <motion.div
+        <motion.h1
           className="font-typewriter text-3xl md:text-5xl text-landing-accent mb-8"
           animate={{ opacity: [1, 0.3, 1, 0.5, 1] }}
           transition={{ duration: 2, repeat: Infinity }}
         >
           {errorVariant.heading}
-        </motion.div>
+        </motion.h1>
       )}
 
       {errorVariant.style === 'classified' && (
         <div className="mb-8">
-          <div className="font-typewriter text-3xl md:text-5xl text-white/80 mb-2">
+          <h1 className="font-typewriter text-3xl md:text-5xl text-white/80 mb-2">
             {errorVariant.heading}
-          </div>
-          <div className="flex gap-2 justify-center mb-2">
+          </h1>
+          <div className="flex gap-2 justify-center mb-2" aria-hidden="true">
             {[0.8, 1, 0.6, 0.9].map((w, i) => (
               <div
                 key={i}

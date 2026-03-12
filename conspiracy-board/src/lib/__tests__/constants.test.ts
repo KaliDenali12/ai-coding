@@ -9,6 +9,7 @@ import {
   TIMEOUT_THRESHOLD_MS,
   FAIL_THRESHOLD_MS,
 } from '../constants.ts'
+import { checkInputs } from '../blocklist.ts'
 
 describe('EXAMPLE_PAIRS', () => {
   it('has at least 4 pairs', () => {
@@ -25,6 +26,13 @@ describe('EXAMPLE_PAIRS', () => {
   it('all pairs have different a and b', () => {
     for (const pair of EXAMPLE_PAIRS) {
       expect(pair.a.toLowerCase()).not.toBe(pair.b.toLowerCase())
+    }
+  })
+
+  it('all pairs pass client-side validation (not blocked)', () => {
+    for (const pair of EXAMPLE_PAIRS) {
+      const result = checkInputs(pair.a, pair.b)
+      expect(result.valid).toBe(true)
     }
   })
 })

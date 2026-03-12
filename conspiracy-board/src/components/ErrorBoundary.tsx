@@ -1,4 +1,4 @@
-import { Component } from 'react'
+import { Component, Fragment } from 'react'
 import type { ReactNode, ErrorInfo } from 'react'
 import { ErrorScreen } from '@/components/ErrorScreen.tsx'
 
@@ -8,15 +8,16 @@ interface Props {
 
 interface State {
   hasError: boolean
+  recoveryCount: number
 }
 
 export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props)
-    this.state = { hasError: false }
+    this.state = { hasError: false, recoveryCount: 0 }
   }
 
-  static getDerivedStateFromError(): State {
+  static getDerivedStateFromError(): Partial<State> {
     return { hasError: true }
   }
 
@@ -25,13 +26,13 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   private handleRetry = (): void => {
-    this.setState({ hasError: false })
+    this.setState(prev => ({ hasError: false, recoveryCount: prev.recoveryCount + 1 }))
   }
 
   render(): ReactNode {
     if (this.state.hasError) {
       return <ErrorScreen onRetry={this.handleRetry} />
     }
-    return this.props.children
+    return <Fragment key={this.state.recoveryCount}>{this.props.children}</Fragment>
   }
 }

@@ -52,6 +52,19 @@ describe('isBlocked — leet-speak and normalization', () => {
     expect(isBlocked('$talin')).toBe(true)  // $talin → stalin
   })
 
+  it('catches space-insertion bypass attempts on single-word terms', () => {
+    expect(isBlocked('h itler')).toBe(true)
+    expect(isBlocked('nig ger')).toBe(true)
+    expect(isBlocked('fa gg ot')).toBe(true)
+    expect(isBlocked('hol ocaust')).toBe(true)
+  })
+
+  it('still catches multi-word terms normally with spaces', () => {
+    expect(isBlocked('school shooting')).toBe(true)
+    expect(isBlocked('sandy hook')).toBe(true)
+    expect(isBlocked('bin laden')).toBe(true)
+  })
+
   it('handles + substitution for t', () => {
     expect(isBlocked('+rump')).toBe(true)  // +rump → trump
   })

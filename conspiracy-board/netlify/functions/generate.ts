@@ -55,7 +55,11 @@ function normalizeInput(input: string): string {
 
 function isBlocked(input: string): boolean {
   const normalized = normalizeInput(input)
-  return BLOCKED_TERMS.some((term) => normalized.includes(term))
+  const noSpaces = normalized.replace(/\s+/g, '')
+  return BLOCKED_TERMS.some((term) => {
+    const termNoSpaces = term.replace(/\s+/g, '')
+    return normalized.includes(term) || noSpaces.includes(termNoSpaces)
+  })
 }
 
 // --- System Prompt ---

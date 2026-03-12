@@ -49,7 +49,7 @@ No image files. `.cork-bg` class uses:
 │    Title Strip    │  ← font-handwritten (Caveat)
 └──────────────────┘
 ```
-Back: `bg-amber-50`, faint ruled lines (CSS gradient), briefing in `font-body`
+Back: `bg-polaroid-cream`, faint ruled lines (CSS gradient), briefing in `font-body`
 
 ## Responsive Breakpoints
 - Mobile: `< 768px` → card 150×210px, vertical flow, `padding: 20px`

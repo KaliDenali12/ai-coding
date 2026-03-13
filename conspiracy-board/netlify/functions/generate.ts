@@ -221,12 +221,14 @@ function validateResponse(data: unknown): ChainResponse {
 // --- Handler ---
 export default async (request: Request): Promise<Response> => {
   if (request.method !== 'POST') {
+    console.log(JSON.stringify({ event: 'request_rejected', reason: 'method_not_allowed', method: request.method }))
     return jsonResponse({ error: 'method_not_allowed', message: 'Method not allowed' }, 405)
   }
 
   // Maintenance mode: set MAINTENANCE_MODE=true in Netlify env vars to disable
   // API calls without deploying code. Returns a themed response immediately.
   if (process.env.MAINTENANCE_MODE === 'true') {
+    console.log(JSON.stringify({ event: 'request_rejected', reason: 'maintenance_mode' }))
     return jsonResponse({
       error: 'maintenance',
       message: 'Our intelligence network is undergoing scheduled maintenance. Please try again later.',
@@ -235,6 +237,7 @@ export default async (request: Request): Promise<Response> => {
 
   const clientIp = getClientIp(request)
   if (!checkRateLimit(clientIp)) {
+    console.log(JSON.stringify({ event: 'request_rejected', reason: 'rate_limited' }))
     return jsonResponse({
       error: 'rate_limited',
       message: 'Too many investigations in progress. Please wait before starting another.',
@@ -278,6 +281,7 @@ export default async (request: Request): Promise<Response> => {
     }
 
     if (isBlocked(a) || isBlocked(b)) {
+      console.log(JSON.stringify({ event: 'request_rejected', reason: 'blocked_content' }))
       return jsonResponse({
         error: 'blocked',
         message: 'This subject is classified beyond our clearance level. Try something else.',
@@ -325,18 +329,25 @@ export default async (request: Request): Promise<Response> => {
 
     const validated = validateResponse(parsed)
 
-    // Structured success log for observability (latency, token usage)
+    // Structured success log for observability (latency, token usage, sizes)
     const latencyMs = Date.now() - requestStartMs
+    const responseBody = JSON.stringify(validated)
     console.log(JSON.stringify({
       event: 'generate_success',
       latencyMs,
       inputTokens: message.usage?.input_tokens,
       outputTokens: message.usage?.output_tokens,
       cacheRead: message.usage?.cache_read_input_tokens ?? 0,
+      cacheWrite: message.usage?.cache_creation_input_tokens ?? 0,
       model: message.model,
+      requestSizeBytes: rawBody.length,
+      responseSizeBytes: responseBody.length,
     }))
 
-    return jsonResponse(validated)
+    return new Response(responseBody, {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    })
   } catch (error) {
     const errorName = error instanceof Error ? error.name : 'UnknownError'
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
@@ -345,8 +356,9 @@ export default async (request: Request): Promise<Response> => {
     // Uses error.status (set by the SDK) instead of instanceof to remain
     // compatible with module mocking in tests.
     const sdkStatus = (error as { status?: number }).status
+    const latencyMs = Date.now() - requestStartMs
     if (errorName === 'APIConnectionTimeoutError' || (errorName === 'APIConnectionError' && errorMessage.includes('timed out'))) {
-      console.error('Anthropic API timeout:', errorMessage)
+      console.error(JSON.stringify({ event: 'generate_error', errorType: 'timeout', errorName, latencyMs }))
       return jsonResponse({
         error: 'server_error',
         message: 'Our sources are currently unreachable. Please try again in a moment.',
@@ -354,7 +366,7 @@ export default async (request: Request): Promise<Response> => {
     }
 
     if (sdkStatus === 429) {
-      console.error('Anthropic API rate limited:', errorMessage)
+      console.error(JSON.stringify({ event: 'generate_error', errorType: 'api_rate_limited', errorName, latencyMs }))
       return jsonResponse({
         error: 'server_error',
         message: 'Our intelligence network is overwhelmed. Please try again shortly.',
@@ -362,9 +374,9 @@ export default async (request: Request): Promise<Response> => {
     }
 
     if (sdkStatus === 401) {
-      console.error('CRITICAL — Anthropic API authentication failed:', errorMessage)
+      console.error(JSON.stringify({ event: 'generate_error', errorType: 'auth_failure', severity: 'CRITICAL', errorName, latencyMs }))
     } else {
-      console.error(`Generate function error: [${errorName}] ${errorMessage}`)
+      console.error(JSON.stringify({ event: 'generate_error', errorType: 'unknown', errorName, errorMessage, latencyMs }))
     }
 
     const isValidation = errorMessage.includes('node ') || errorMessage.includes('chain must') || errorMessage.includes('missing ')

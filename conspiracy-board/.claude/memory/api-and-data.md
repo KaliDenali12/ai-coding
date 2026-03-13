@@ -36,11 +36,12 @@ Chain has exactly 7 items: item[0] = concept A, items[1-5] = intermediate steps,
 | 429 | `rate_limited` | Exceeded 20 requests per 15-minute window for this IP |
 | 500 | `server_error` | Auth failure, unknown errors |
 | 502 | `invalid_response` | Claude returned malformed JSON |
-| 503 | `server_error` | Anthropic API rate limited (upstream) |
+| 503 | `server_error` | Anthropic API rate limited (upstream) OR circuit breaker open |
 | 503 | `maintenance` | `MAINTENANCE_MODE=true` env var set (kill switch) |
 | 504 | `server_error` | Anthropic API timeout |
 
 All errors return `{ error, message }`. Message is always themed (never leaks raw API errors).
+All responses include `X-Request-Id` header (UUID, or echoed from client `x-request-id`).
 
 ## Client-Side (src/lib/api.ts)
 
@@ -56,7 +57,7 @@ All errors return `{ error, message }`. Message is always themed (never leaks ra
 - Throws descriptive errors on validation failure
 
 ### ApiError class
-Custom error with `statusCode` property. Used in App.tsx for error handling.
+Custom error with `statusCode` and `requestId` properties. `requestId` is extracted from response `X-Request-Id` header. Used in App.tsx for error handling with request tracing.
 
 ## Server-Side (netlify/functions/generate.ts)
 
@@ -64,6 +65,19 @@ Custom error with `statusCode` property. Used in App.tsx for error handling.
 - Per-IP: 20 requests per 15-minute window (in-memory Map, resets on cold start)
 - IP extracted from `x-nf-client-connection-ip` header (Netlify), falls back to `x-forwarded-for`
 - `_resetRateLimiter()` exported for test isolation — call in `beforeEach`
+
+### Circuit Breaker
+- 3 consecutive API failures → circuit opens for 30s (fail fast with 503)
+- After cooldown, allows one probe request (half-open state)
+- Resets to closed on any successful API call
+- Validation failures (bad AI output) don't count — only transport/auth errors trip it
+- In-memory state, resets on cold start
+- `_resetCircuitBreaker()` exported for test isolation — call in `beforeEach` alongside `_resetRateLimiter()`
+
+### Correlation IDs
+- Every request gets a UUID via `crypto.randomUUID()`, or echoes client-provided `x-request-id` header
+- Included in all structured log entries (`requestId` field)
+- Returned in `X-Request-Id` response header on every response (success and error)
 
 ### Anthropic SDK Usage
 ```typescript
@@ -83,11 +97,17 @@ const message = await client.messages.create({
 ### Maintenance Mode
 Set `MAINTENANCE_MODE=true` in Netlify env vars to return 503 immediately without calling Anthropic API. Kill switch for incidents/outages.
 
-### Success Logging
-On successful generation, logs structured JSON to Netlify function logs:
+### Structured Logging
+All paths emit structured JSON to Netlify function logs. Key events:
 ```json
-{ "event": "generate_success", "latencyMs": 8500, "inputTokens": 1200, "outputTokens": 3800, "cacheRead": 1100, "model": "claude-sonnet-4-20250514" }
+// Success
+{ "event": "generate_success", "requestId": "uuid", "latencyMs": 8500, "inputTokens": 1200, "outputTokens": 3800, "cacheRead": 1100, "cacheWrite": 0, "model": "...", "requestSizeBytes": 65, "responseSizeBytes": 12500 }
+// Error
+{ "event": "generate_error", "requestId": "uuid", "errorType": "timeout|api_rate_limited|auth_failure|unknown", "errorName": "...", "latencyMs": 25000 }
+// Rejection (pre-API)
+{ "event": "request_rejected", "requestId": "uuid", "reason": "rate_limited|blocked_content|maintenance_mode|circuit_open|method_not_allowed" }
 ```
+See `docs/RUNBOOKS.md` for full log event reference and operational runbooks.
 
 ### Response Processing
 1. Extract text block from `message.content` array

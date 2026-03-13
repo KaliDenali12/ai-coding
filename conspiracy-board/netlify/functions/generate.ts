@@ -143,11 +143,13 @@ function checkRateLimit(ip: string): boolean {
 
   // Periodic cleanup: if map grows large, prune stale entries
   if (rateLimitMap.size > 1000) {
+    const sizeBefore = rateLimitMap.size
     for (const [key, val] of rateLimitMap) {
       const filtered = val.filter((t) => now - t < RATE_LIMIT_WINDOW_MS)
       if (filtered.length === 0) rateLimitMap.delete(key)
       else rateLimitMap.set(key, filtered)
     }
+    console.log(JSON.stringify({ event: 'rate_limit_cleanup', sizeBefore, sizeAfter: rateLimitMap.size }))
   }
 
   return true // allowed

@@ -5,6 +5,8 @@ on:
     branches: [main, master]
   push:
     branches: [main, master]
+  schedule:
+    - cron: '0 9 * * *' # Daily at 09:00 UTC — catch CVEs between weekly Dependabot runs
 
 jobs:
   check:
@@ -20,10 +22,16 @@ jobs:
       - run: npm ci
 
       - name: Lint
+        if: github.event_name != 'schedule'
         run: npm run lint
 
       - name: Type check
+        if: github.event_name != 'schedule'
         run: npx tsc --noEmit
 
       - name: Test
+        if: github.event_name != 'schedule'
         run: npm test
+
+      - name: Security audit
+        run: npm audit --audit-level=high

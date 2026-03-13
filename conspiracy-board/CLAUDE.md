@@ -84,6 +84,7 @@ npx tsc --noEmit           # Type check only
 |----------|-------|---------|
 | `ANTHROPIC_API_KEY` | Netlify dashboard / `.env` local | Claude API key (never client-side) |
 | `ANTHROPIC_TIMEOUT_MS` | Netlify dashboard / `.env` local | SDK timeout in ms (default 25000). Optional. |
+| `MAINTENANCE_MODE` | Netlify dashboard | Set to `"true"` to return 503 without calling API. Kill switch for incidents. Optional. |
 
 ## Architectural Rules
 
@@ -201,7 +202,8 @@ No database. Single API response type — see `src/types/conspiracy.ts`:
 - **Blocklist normalization pipeline**: `normalizeInput()` applies: (1) strip zero-width chars, (2) NFKD normalization (fullwidth→ASCII), (3) strip combining marks, (4) lowercase, (5) Cyrillic/Greek confusable→Latin mapping, (6) leet-speak substitution, (7) strip separators `[_.+-]+`, (8) collapse whitespace. Then `isBlocked()` does a dual-pass check: once with spaces (for multi-word terms like "school shooting") and once without spaces (catches space-insertion bypass like "h itler"). Duplicated in both `blocklist.ts` and `generate.ts`.
 - **`.npmrc` has `ignore-scripts=true`**: Supply chain hardening. Netlify build command runs `npm rebuild esbuild` before build since esbuild needs its postinstall script.
 - **Security headers**: Configured in `netlify.toml` `[[headers]]` block — CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy.
-- **Build pipeline security**: `netlify.toml` build command runs `npm audit --audit-level=high` before build. Fails on high/critical advisories.
+- **Build pipeline security**: `netlify.toml` build command runs `npm audit --audit-level=high` and `npm test` before build. Fails on high/critical advisories or test failures.
+- **CI**: GitHub Actions workflow (`.github/workflows/ci.yml`) runs lint, typecheck, and tests on PRs to main. Dependabot PRs get validated automatically.
 - **ESLint flat config**: `eslint.config.js` uses ESLint 9 flat config format. No `.eslintrc` file. `react-hooks/purity` is disabled (false positives on intentional `Math.random()` in `useMemo`). Underscore-prefixed vars are allowed as unused.
 - **Vitest 4 blocked**: Upgrade from 3.x to 4.x breaks 16 tests in `generate-contract.test.ts` due to mock constructor behavior change (`new` keyword now constructs instead of calling `mock.apply`). Mock patterns in that file need updating before upgrade.
 - **Import extensions**: This project uses `allowImportingTsExtensions` + `verbatimModuleSyntax`. Always include `.ts`/`.tsx` in imports.

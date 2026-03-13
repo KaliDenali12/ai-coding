@@ -160,6 +160,42 @@ export function _resetRateLimiter(): void {
   rateLimitMap.clear()
 }
 
+// --- Circuit Breaker ---
+// Prevents hammering the Anthropic API during outages. After consecutive
+// failures, requests fail fast (~0ms) instead of waiting 25s for a timeout.
+// State resets on cold start (acceptable for serverless).
+const CIRCUIT_BREAKER_THRESHOLD = 3  // consecutive failures to open
+const CIRCUIT_BREAKER_COOLDOWN_MS = 30_000 // 30s before allowing a probe
+
+let circuitFailureCount = 0
+let circuitOpenedAt = 0 // timestamp when circuit opened, 0 = closed
+
+function isCircuitOpen(): boolean {
+  if (circuitFailureCount < CIRCUIT_BREAKER_THRESHOLD) return false
+  const elapsed = Date.now() - circuitOpenedAt
+  // Allow a single probe request after cooldown (half-open state)
+  if (elapsed >= CIRCUIT_BREAKER_COOLDOWN_MS) return false
+  return true
+}
+
+function recordCircuitSuccess(): void {
+  circuitFailureCount = 0
+  circuitOpenedAt = 0
+}
+
+function recordCircuitFailure(): void {
+  circuitFailureCount++
+  if (circuitFailureCount >= CIRCUIT_BREAKER_THRESHOLD) {
+    circuitOpenedAt = Date.now()
+  }
+}
+
+/** @internal Exported for testing only */
+export function _resetCircuitBreaker(): void {
+  circuitFailureCount = 0
+  circuitOpenedAt = 0
+}
+
 // --- Correlation ID ---
 function generateRequestId(): string {
   // Compact, URL-safe, collision-resistant ID for request tracing.
@@ -298,6 +334,16 @@ export default async (request: Request): Promise<Response> => {
       }, 400, requestId)
     }
 
+    // Circuit breaker: fail fast if Anthropic API has been failing consecutively.
+    // Saves users from waiting 25s for a timeout during outages.
+    if (isCircuitOpen()) {
+      console.log(JSON.stringify({ event: 'request_rejected', reason: 'circuit_open', requestId }))
+      return jsonResponse({
+        error: 'server_error',
+        message: 'Our sources are temporarily unavailable. Please try again in a moment.',
+      }, 503, requestId)
+    }
+
     // Call Claude API
     // Explicit timeout: Anthropic SDK defaults to 10 minutes, which far exceeds
     // Netlify's function timeout (10-26s). Without this, the function hangs until
@@ -338,6 +384,7 @@ export default async (request: Request): Promise<Response> => {
     }
 
     const validated = validateResponse(parsed)
+    recordCircuitSuccess()
 
     // Structured success log for observability (latency, token usage, sizes)
     const latencyMs = Date.now() - requestStartMs
@@ -368,6 +415,14 @@ export default async (request: Request): Promise<Response> => {
     // compatible with module mocking in tests.
     const sdkStatus = (error as { status?: number }).status
     const latencyMs = Date.now() - requestStartMs
+
+    // Record API-level failures for circuit breaker (timeouts, rate limits, auth).
+    // Validation failures (bad AI output) don't count — the API itself is working.
+    const isValidation = errorMessage.includes('node ') || errorMessage.includes('chain must') || errorMessage.includes('missing ')
+    if (!isValidation) {
+      recordCircuitFailure()
+    }
+
     if (errorName === 'APIConnectionTimeoutError' || (errorName === 'APIConnectionError' && errorMessage.includes('timed out'))) {
       console.error(JSON.stringify({ event: 'generate_error', errorType: 'timeout', errorName, requestId, latencyMs }))
       return jsonResponse({
@@ -389,8 +444,6 @@ export default async (request: Request): Promise<Response> => {
     } else {
       console.error(JSON.stringify({ event: 'generate_error', errorType: 'unknown', errorName, errorMessage, requestId, latencyMs }))
     }
-
-    const isValidation = errorMessage.includes('node ') || errorMessage.includes('chain must') || errorMessage.includes('missing ')
 
     return jsonResponse({
       error: isValidation ? 'invalid_response' : 'server_error',

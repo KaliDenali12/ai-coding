@@ -8,7 +8,7 @@ vi.mock('@anthropic-ai/sdk', () => ({
   })),
 }))
 
-import handler, { _resetRateLimiter } from '../generate.ts'
+import handler, { _resetRateLimiter, _resetCircuitBreaker } from '../generate.ts'
 
 function makeValidChain() {
   return {
@@ -39,6 +39,7 @@ describe('generate handler — concurrency', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     _resetRateLimiter()
+    _resetCircuitBreaker()
   })
 
   it('rate limiter correctly counts concurrent requests from same IP', async () => {

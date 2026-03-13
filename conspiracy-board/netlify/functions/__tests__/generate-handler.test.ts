@@ -36,6 +36,7 @@ describe('generate handler', () => {
     const mod = await import('../generate.ts')
     handler = mod.default
     mod._resetRateLimiter()
+    mod._resetCircuitBreaker()
   })
 
   it('returns 500 when API returns invalid JSON', async () => {
@@ -86,5 +87,59 @@ describe('generate handler', () => {
     const res = await handler(makeRequest({}))
     expect(res.status).toBe(400)
     expect(res.headers.get('X-Request-Id')).toBeTruthy()
+  })
+
+  it('circuit breaker opens after 3 consecutive API failures', async () => {
+    mockCreate.mockRejectedValue(new Error('API down'))
+
+    // 3 failures to trip the breaker
+    for (let i = 0; i < 3; i++) {
+      await handler(makeRequest({ conceptA: `Test${i}`, conceptB: 'Pizza' }))
+    }
+
+    // 4th request should be rejected by circuit breaker (503, no API call)
+    const callCountBefore = mockCreate.mock.calls.length
+    const res = await handler(makeRequest({ conceptA: 'Another', conceptB: 'Test' }))
+    expect(res.status).toBe(503)
+    const body = await res.json()
+    expect(body.error).toBe('server_error')
+    expect(body.message).toContain('temporarily unavailable')
+    // Verify API was NOT called
+    expect(mockCreate.mock.calls.length).toBe(callCountBefore)
+  })
+
+  it('circuit breaker resets after a successful request', async () => {
+    const validResponse = {
+      content: [{ type: 'text', text: JSON.stringify({
+        chain: Array.from({ length: 7 }, (_, i) => ({
+          title: `Node ${i}`, emoji: '🔍', font_category: 'horror',
+          teaser: 'Test teaser', briefing: 'Test briefing',
+        })),
+        case_file_number: 'CASE FILE #1234-A',
+        classification_level: 'TOP SECRET',
+      }) }],
+      usage: { input_tokens: 100, output_tokens: 200 },
+      model: 'test-model',
+    }
+
+    // 2 failures (below threshold)
+    mockCreate.mockRejectedValueOnce(new Error('fail'))
+    mockCreate.mockRejectedValueOnce(new Error('fail'))
+    await handler(makeRequest({ conceptA: 'A1', conceptB: 'B1' }))
+    await handler(makeRequest({ conceptA: 'A2', conceptB: 'B2' }))
+
+    // 1 success resets the counter
+    mockCreate.mockResolvedValueOnce(validResponse)
+    const successRes = await handler(makeRequest({ conceptA: 'A3', conceptB: 'B3' }))
+    expect(successRes.status).toBe(200)
+
+    // 2 more failures (still below threshold since counter was reset)
+    mockCreate.mockRejectedValueOnce(new Error('fail'))
+    mockCreate.mockRejectedValueOnce(new Error('fail'))
+    const res1 = await handler(makeRequest({ conceptA: 'A4', conceptB: 'B4' }))
+    const res2 = await handler(makeRequest({ conceptA: 'A5', conceptB: 'B5' }))
+    // These should still hit the API (not circuit-broken)
+    expect(res1.status).toBe(500)
+    expect(res2.status).toBe(500)
   })
 })

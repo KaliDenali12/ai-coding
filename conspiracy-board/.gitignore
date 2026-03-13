@@ -23,6 +23,9 @@ Thumbs.db
 # Netlify
 .netlify/
 
+# Playwright MCP screenshots
+.playwright-mcp/
+
 # Claude Code — ignore all except memory files
 .claude/*
 !.claude/memory/

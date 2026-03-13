@@ -23,7 +23,7 @@ export function PolaroidCard({
 
   const cardContent = (
     <div
-      className="perspective cursor-pointer focus:outline-none focus:ring-2 focus:ring-white/50 focus:ring-offset-2 rounded-sm"
+      className="perspective h-full w-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-white/50 focus:ring-offset-2 rounded-sm"
       onClick={onClick}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {

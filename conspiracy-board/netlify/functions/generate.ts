@@ -222,6 +222,15 @@ export default async (request: Request): Promise<Response> => {
     return jsonResponse({ error: 'method_not_allowed', message: 'Method not allowed' }, 405)
   }
 
+  // Maintenance mode: set MAINTENANCE_MODE=true in Netlify env vars to disable
+  // API calls without deploying code. Returns a themed response immediately.
+  if (process.env.MAINTENANCE_MODE === 'true') {
+    return jsonResponse({
+      error: 'maintenance',
+      message: 'Our intelligence network is undergoing scheduled maintenance. Please try again later.',
+    }, 503)
+  }
+
   const clientIp = getClientIp(request)
   if (!checkRateLimit(clientIp)) {
     return jsonResponse({
@@ -230,6 +239,7 @@ export default async (request: Request): Promise<Response> => {
     }, 429)
   }
 
+  const requestStartMs = Date.now()
   try {
     let rawBody: string
     try {
@@ -312,6 +322,17 @@ export default async (request: Request): Promise<Response> => {
     }
 
     const validated = validateResponse(parsed)
+
+    // Structured success log for observability (latency, token usage)
+    const latencyMs = Date.now() - requestStartMs
+    console.log(JSON.stringify({
+      event: 'generate_success',
+      latencyMs,
+      inputTokens: message.usage?.input_tokens,
+      outputTokens: message.usage?.output_tokens,
+      cacheRead: message.usage?.cache_read_input_tokens ?? 0,
+      model: message.model,
+    }))
 
     return jsonResponse(validated)
   } catch (error) {

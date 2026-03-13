@@ -115,6 +115,7 @@ npx tsc --noEmit           # Type check only
 - **Health endpoint** (`netlify/functions/health.ts`): `GET /api/health` (full), `/api/health/live` (liveness), `/api/health/ready` (readiness). Checks runtime, API key presence, maintenance mode, SDK timeout config. Returns structured JSON with per-component status and latency. Does NOT call Anthropic API.
 - **Structured logging**: All paths (success, errors, rejections) emit structured JSON with `event`, `requestId`, `latencyMs`. See `docs/RUNBOOKS.md` for log event reference.
 - **Operational runbooks**: `docs/RUNBOOKS.md` — 10 runbooks covering all identified failure modes with symptoms, diagnosis, resolution, and prevention.
+- **Disaster recovery**: `docs/DISASTER_RECOVERY.md` — step-by-step recovery procedures for infrastructure failures (site down, repo lost, key compromised). `docs/BACKUP_RECOMMENDATIONS.md` — prioritized resilience improvements. Key fact: entire system recoverable from Git clone + 1 API key in ~12 minutes.
 
 ### Content Safety (3 Layers)
 1. **Client blocklist** (`src/lib/blocklist.ts`): Normalizes input (leet-speak substitution), checks against blocked terms
@@ -300,3 +301,5 @@ board ──(new investigation)──→ landing ←─────────�
 | `api-and-data.md` | Generate endpoint, Claude API, response validation |
 | `feature-inventory.md` | Component responsibilities, what's built vs planned |
 | `docs/ERROR_MESSAGES.md` | Error message inventory, style guide, tone conventions |
+| `docs/DISASTER_RECOVERY.md` | Infrastructure recovery, credential rotation, incident playbooks |
+| `docs/BACKUP_RECOMMENDATIONS.md` | Resilience improvements, backup testing schedule |

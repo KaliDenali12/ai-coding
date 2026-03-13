@@ -37,6 +37,7 @@ Chain has exactly 7 items: item[0] = concept A, items[1-5] = intermediate steps,
 | 500 | `server_error` | Auth failure, unknown errors |
 | 502 | `invalid_response` | Claude returned malformed JSON |
 | 503 | `server_error` | Anthropic API rate limited (upstream) |
+| 503 | `maintenance` | `MAINTENANCE_MODE=true` env var set (kill switch) |
 | 504 | `server_error` | Anthropic API timeout |
 
 All errors return `{ error, message }`. Message is always themed (never leaks raw API errors).
@@ -79,11 +80,21 @@ const message = await client.messages.create({
 - SDK timeout set to 25s (configurable via `ANTHROPIC_TIMEOUT_MS`). SDK default of 10min is too long for serverless.
 - Error catch block classifies SDK errors by `error.name` and `error.status` (not `instanceof` — avoids issues with module mocking in tests).
 
+### Maintenance Mode
+Set `MAINTENANCE_MODE=true` in Netlify env vars to return 503 immediately without calling Anthropic API. Kill switch for incidents/outages.
+
+### Success Logging
+On successful generation, logs structured JSON to Netlify function logs:
+```json
+{ "event": "generate_success", "latencyMs": 8500, "inputTokens": 1200, "outputTokens": 3800, "cacheRead": 1100, "model": "claude-sonnet-4-20250514" }
+```
+
 ### Response Processing
 1. Extract text block from `message.content` array
 2. `JSON.parse()` the text
 3. Validate structure via `validateResponse()`
-4. Return validated JSON
+4. Log success metrics (latency, tokens)
+5. Return validated JSON
 
 ### Validation (server-side)
 Mirrors client validation: 7 items, all fields present, valid font categories.

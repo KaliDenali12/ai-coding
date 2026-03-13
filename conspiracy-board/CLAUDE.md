@@ -55,7 +55,8 @@ conspiracy-board/
 │       ├── generate.ts            # Claude API proxy: validate → prompt → call → validate → respond
 │       └── __tests__/generate.test.ts
 ├── .github/
-│   └── dependabot.yml             # Weekly npm dependency update PRs
+│   ├── dependabot.yml             # Weekly npm dependency update PRs
+│   └── workflows/ci.yml           # CI: lint, typecheck, test on PRs
 ├── PRD.md/                        # Product requirements (5 docs, reference only)
 ├── index.html                     # Google Fonts preload (12 fonts)
 ├── eslint.config.js               # ESLint 9 flat config (React + TS + hooks)
@@ -99,7 +100,7 @@ npx tsc --noEmit           # Type check only
 
 ### Backend
 - **Single endpoint**: `POST /.netlify/functions/generate` (redirected from `/api/generate`)
-- **Flow**: Rate limit check → validate inputs → server-side blocklist → construct Claude prompt → call API → validate JSON → return
+- **Flow**: Maintenance mode check → rate limit check → validate inputs → server-side blocklist → construct Claude prompt → call API → validate JSON → log success metrics → return
 - **Rate limiting**: Per-IP, 20 requests per 15-minute window. In-memory (resets on cold start). Extracts IP from `x-nf-client-connection-ip` or `x-forwarded-for`. Returns 429 with themed message. `_resetRateLimiter()` exported for test isolation.
 - **Anthropic SDK**: Uses `new Anthropic({ timeout: 25_000 })` — reads `ANTHROPIC_API_KEY` from env automatically. Timeout is configurable via `ANTHROPIC_TIMEOUT_MS` env var (default 25s). SDK default of 10 minutes is too long for serverless.
 - **Prompt caching**: System prompt uses `cache_control: { type: 'ephemeral' }` for Anthropic prompt caching (90% input token discount on cache hits)

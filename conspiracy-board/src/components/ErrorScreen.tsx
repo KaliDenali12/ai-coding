@@ -18,7 +18,7 @@ export function ErrorScreen({ onRetry }: ErrorScreenProps) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.4 }}
+      transition={{ duration: 0.2 }}
       data-testid="error-screen"
     >
       {/* Stamp/Heading */}
@@ -62,7 +62,7 @@ export function ErrorScreen({ onRetry }: ErrorScreenProps) {
         className="font-typewriter text-white/70 text-center text-sm md:text-lg max-w-md mb-8"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
+        transition={{ delay: 0.15 }}
         role="alert"
         data-testid="error-message"
       >

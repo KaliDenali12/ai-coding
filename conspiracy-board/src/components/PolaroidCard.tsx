@@ -37,7 +37,7 @@ export function PolaroidCard({
       data-testid="polaroid-card"
     >
       <div
-        className="preserve-3d transition-transform duration-500 relative"
+        className="preserve-3d transition-transform duration-[350ms] relative"
         style={{
           transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
           width: '100%',
@@ -123,10 +123,10 @@ export function PolaroidCard({
       animate={{ opacity: 1, scale: 1, y: 0, rotate: rotation }}
       transition={{
         delay,
-        duration: 0.5,
+        duration: 0.35,
         type: 'spring',
-        stiffness: 200,
-        damping: 20,
+        stiffness: 280,
+        damping: 22,
       }}
       whileHover={{ scale: 1.03, zIndex: 50 }}
       whileTap={{ scale: 0.97 }}

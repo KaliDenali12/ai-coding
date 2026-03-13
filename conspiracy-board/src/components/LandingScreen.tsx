@@ -54,14 +54,14 @@ export function LandingScreen({ onSubmit, initialA = '', initialB = '' }: Landin
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.5 }}
+      transition={{ duration: 0.3 }}
     >
       {/* Headline */}
       <motion.h1
         className="font-typewriter text-4xl md:text-6xl text-white mb-2 text-center"
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.2 }}
+        transition={{ delay: 0.1 }}
       >
         "It's All Connected."
       </motion.h1>
@@ -70,7 +70,7 @@ export function LandingScreen({ onSubmit, initialA = '', initialB = '' }: Landin
         className="font-typewriter text-landing-accent text-sm md:text-base mb-10 tracking-widest uppercase"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 0.5 }}
+        transition={{ delay: 0.25 }}
       >
         Conspiracy Board
       </motion.p>
@@ -80,7 +80,7 @@ export function LandingScreen({ onSubmit, initialA = '', initialB = '' }: Landin
         className="flex flex-col md:flex-row gap-4 w-full max-w-2xl mb-6"
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.4 }}
+        transition={{ delay: 0.2 }}
       >
         <input
           type="text"
@@ -147,7 +147,7 @@ export function LandingScreen({ onSubmit, initialA = '', initialB = '' }: Landin
         className="flex flex-wrap justify-center gap-2 max-w-2xl"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 0.7 }}
+        transition={{ delay: 0.35 }}
       >
         {EXAMPLE_PAIRS.map((pair) => (
           <button

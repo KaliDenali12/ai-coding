@@ -33,7 +33,7 @@ export function LoadingScreen({ onTimeout }: LoadingScreenProps) {
 
   // Show stamp after brief delay
   useEffect(() => {
-    const timer = setTimeout(() => setShowStamp(true), 300)
+    const timer = setTimeout(() => setShowStamp(true), 100)
     return () => clearTimeout(timer)
   }, [])
 
@@ -67,7 +67,7 @@ export function LoadingScreen({ onTimeout }: LoadingScreenProps) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.4 }}
+      transition={{ duration: 0.2 }}
       data-testid="loading-screen"
       role="status"
       aria-label="Loading investigation results"
@@ -92,13 +92,13 @@ export function LoadingScreen({ onTimeout }: LoadingScreenProps) {
             style={{ width: `${width * 100}%` }}
             initial={{ opacity: 0, scaleX: 0 }}
             animate={{ opacity: 1, scaleX: 1 }}
-            transition={{ delay: 0.5 + i * 0.15, duration: 0.3 }}
+            transition={{ delay: 0.2 + i * 0.1, duration: 0.2 }}
           >
             <motion.div
               className="h-full bg-landing-bg rounded-sm"
               initial={{ scaleX: 0 }}
               animate={{ scaleX: 1 }}
-              transition={{ delay: 0.8 + i * 0.15, duration: 0.2 }}
+              transition={{ delay: 0.4 + i * 0.1, duration: 0.15 }}
               style={{ transformOrigin: 'left' }}
             />
           </motion.div>
@@ -110,10 +110,10 @@ export function LoadingScreen({ onTimeout }: LoadingScreenProps) {
         <motion.p
           key={getMessage()}
           className="font-typewriter text-white/70 text-sm md:text-base tracking-wider"
-          initial={{ opacity: 0, y: 10 }}
+          initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          transition={{ duration: 0.3 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.2 }}
           data-testid="loading-message"
           aria-live="polite"
         >

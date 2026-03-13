@@ -11,11 +11,11 @@ Cards and strings animate in sequential order on board mount:
 ### Timing Constants (src/lib/constants.ts)
 | Constant | Value | Purpose |
 |----------|-------|---------|
-| `REVEAL_CARD_DELAY_MS` | 800 | Initial delay before first card |
-| `REVEAL_CARD_ENTRANCE_MS` | 500 | Duration of each card's entrance |
-| `REVEAL_STRING_DURATION_MS` | 800 | Duration of each string's draw |
+| `REVEAL_CARD_DELAY_MS` | 400 | Initial delay before first card |
+| `REVEAL_CARD_ENTRANCE_MS` | 350 | Duration of each card's entrance |
+| `REVEAL_STRING_DURATION_MS` | 500 | Duration of each string's draw |
 
-Total sequence: ~800 + 7×(500+800) = ~9.9s + 500ms stamp buffer
+Total sequence: ~400 + 7×(350+500) = ~6.35s + 500ms stamp buffer
 
 ### Card Delay Formula
 ```
@@ -31,7 +31,7 @@ Cards are NOT interactive until `revealComplete = true`.
   - `.perspective` → `perspective: 1000px`
   - `.preserve-3d` → `transform-style: preserve-3d`
   - `.backface-hidden` → `backface-visibility: hidden`
-- Transition: `duration-500` (500ms)
+- Transition: `duration-[350ms]` (350ms)
 - Front and back are absolutely positioned, both with `.backface-hidden`
 - Back face has `transform: rotateY(180deg)` applied inline
 
@@ -47,14 +47,16 @@ Cards are NOT interactive until `revealComplete = true`.
 - CSS keyframe `stamp-slam`: scale 3→1.1→1, opacity 0→0.9→0.8
 - Duration: 0.4s ease-out
 - Applied via `.animate-stamp` class
-- Appears after 300ms delay on LoadingScreen mount
+- Appears after 100ms delay on LoadingScreen mount
 
 ## Framer Motion Usage
 - `AnimatePresence mode="wait"` wraps screen transitions in App.tsx
 - `motion.div` for page-level enter/exit (opacity 0→1)
 - `whileHover={{ scale: 1.03 }}` on Polaroid cards (disabled during reveal)
 - `whileTap={{ scale: 0.98 }}` on buttons
-- Spring animation: `stiffness: 200, damping: 20` for card entrance
+- Spring animation: `stiffness: 280, damping: 22` for card entrance
+- Screen transitions: 200-300ms opacity fades (all screens)
+- `.preserve-3d` has `will-change: transform` for GPU compositing
 
 ## Reduced Motion Support
 When `prefers-reduced-motion` is active:

@@ -35,13 +35,14 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* 3D flip support */
+/* 3D flip support — GPU-composited for smooth transforms */
 .perspective {
   perspective: 1000px;
 }
 
 .preserve-3d {
   transform-style: preserve-3d;
+  will-change: transform;
 }
 
 .backface-hidden {

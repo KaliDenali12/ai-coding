@@ -300,7 +300,7 @@
 |-------|---------|------------|
 | `generate_success` | Successful chain generation | `requestId`, `latencyMs`, `inputTokens`, `outputTokens`, `cacheRead`, `cacheWrite` |
 | `generate_error` | Failed generation | `requestId`, `errorType`, `errorName`, `latencyMs` |
-| `request_rejected` | Pre-processing rejection | `requestId`, `reason` (method_not_allowed, maintenance_mode, rate_limited, blocked_content) |
+| `request_rejected` | Pre-processing rejection | `requestId`, `reason` (method_not_allowed, maintenance_mode, rate_limited, blocked_content, circuit_open) |
 | `rate_limit_cleanup` | Rate limiter map pruned | `sizeBefore`, `sizeAfter` |
 
 ## Quick Reference: Error Types
@@ -316,7 +316,7 @@
 
 | Dependency | Down Impact | Slow Impact | Timeout? | Retry? | Circuit Breaker? | Graceful Degradation? |
 |-----------|-------------|-------------|----------|--------|------------------|-----------------------|
-| **Anthropic Claude API** | All generations fail (500/504) | Increased latency, potential timeouts | Yes (25s SDK, 26s function) | No | No | No — complete failure, error screen shown |
+| **Anthropic Claude API** | All generations fail (500/504), circuit breaker opens after 3 failures | Increased latency, potential timeouts | Yes (25s SDK, 26s function) | No | **Yes** (3 failures → 30s cooldown) | Partial — circuit breaker fails fast (503) instead of 25s wait |
 | **Netlify Functions Runtime** | Entire backend unavailable | Cold start latency (200-500ms) | Yes (26s) | N/A | N/A | Frontend loads, but API calls fail |
 | **Google Fonts CDN** | UI renders with fallback system fonts | Slower initial page load | Browser default | Browser default | N/A | Yes — CSS fallback fonts |
 | **Netlify CDN** | SPA not served at all | Slower page load | N/A | N/A | N/A | No — site is unreachable |
@@ -327,7 +327,7 @@
 |-----------|--------|-------|
 | Maintenance mode kill switch | **Yes** | `MAINTENANCE_MODE=true` env var → 503 without API calls |
 | Feature flags | **No** | No feature flag system |
-| Circuit breaker on Anthropic API | **No** | Every request attempts the API call |
+| Circuit breaker on Anthropic API | **Yes** | 3 consecutive failures → 30s fast-fail cooldown, then half-open probe |
 | Partial rendering on failure | **No** | All-or-nothing by design (7 cards or error) |
 | Client timeout handling | **Yes** | Progressive UI states: 8s warning, 12s timeout warning, 15s hard fail |
 | Offline/network error handling | **Yes** | Client catches fetch errors, shows themed error screen |

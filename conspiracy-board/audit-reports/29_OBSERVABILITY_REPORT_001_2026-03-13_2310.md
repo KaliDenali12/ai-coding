@@ -5,7 +5,7 @@
 **Date**: 2026-03-13
 **Time**: 23:10 (local)
 **Branch**: `observability-2026-03-13`
-**Tests**: 293 passing (was 290 before audit)
+**Tests**: 295 passing (was 290 before audit)
 
 ---
 
@@ -21,15 +21,15 @@
 ### After This Audit
 - **Detection speed**: Health endpoints enable uptime monitoring; structured error logs enable log-based alerting
 - **Diagnostic capability**: Request correlation IDs across all logs and response headers; structured JSON for all error paths; request/response size tracking
-- **Graceful degradation**: Unchanged (maintenance mode only) — documented in runbooks
+- **Graceful degradation**: Circuit breaker added — fails fast during Anthropic outages instead of 25s timeout. Maintenance mode kill switch already existed.
 
 ### Top 5 Gaps (Remaining)
 
 1. **No external uptime monitoring** — Health endpoints exist but nothing polls them
 2. **No alerting pipeline** — Structured logs are emitted but no system processes them into alerts
-3. **No circuit breaker on Anthropic API** — Every request attempts the API call even during outages
-4. **No client-side error reporting** — Frontend errors are `console.error` only, invisible to ops
-5. **No distributed rate limiting** — In-memory rate limiter resets on every cold start
+3. **No client-side error reporting** — Frontend errors are `console.error` only (now with requestId), but invisible to ops without a service like Sentry
+4. **No distributed rate limiting** — In-memory rate limiter resets on every cold start
+5. **No business funnel metrics** — No tracking of page view → submit → success conversion
 
 ---
 
@@ -266,8 +266,13 @@ Currently there is no on-call rotation or incident response process. For a proje
 |------|--------|-------|
 | `netlify/functions/health.ts` | **NEW** — Health check endpoint with liveness/readiness | 11 tests |
 | `netlify/functions/__tests__/health.test.ts` | **NEW** — Health endpoint tests | — |
-| `netlify/functions/generate.ts` | Enhanced structured logging, correlation IDs | 3 new tests |
-| `netlify/functions/__tests__/generate-handler.test.ts` | Added correlation ID tests | — |
+| `netlify/functions/generate.ts` | Enhanced structured logging, correlation IDs, circuit breaker | 5 new tests |
+| `netlify/functions/__tests__/generate-handler.test.ts` | Added correlation ID + circuit breaker tests | — |
+| `netlify/functions/__tests__/generate-contract.test.ts` | Added circuit breaker reset to test setup | — |
+| `netlify/functions/__tests__/generate-concurrency.test.ts` | Added circuit breaker reset to test setup | — |
+| `src/lib/api.ts` | ApiError now captures requestId from X-Request-Id header | — |
+| `src/App.tsx` | Error logging includes requestId for tracing | — |
+| `src/lib/__tests__/api-generate.test.ts` | Updated mocks to include response headers | — |
 | `docs/RUNBOOKS.md` | **NEW** — 10 operational runbooks | — |
 
-**Test count**: 290 → 293 (3 new tests added, 0 broken)
+**Test count**: 290 → 295 (5 new tests added, 0 broken)

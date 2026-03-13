@@ -62,4 +62,29 @@ describe('generate handler', () => {
     const body = await res.json()
     expect(body.error).toBe('blocked')
   })
+
+  it('returns X-Request-Id header on every response', async () => {
+    const res = await handler(makeRequest({ conceptA: 'Cats', conceptB: 'Pizza' }))
+    const requestId = res.headers.get('X-Request-Id')
+    expect(requestId).toBeTruthy()
+    // UUID v4 format
+    expect(requestId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)
+  })
+
+  it('echoes client-provided X-Request-Id header', async () => {
+    const clientId = 'client-trace-abc123'
+    const req = new Request('http://localhost/.netlify/functions/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-request-id': clientId },
+      body: JSON.stringify({ conceptA: 'Cats', conceptB: 'Pizza' }),
+    })
+    const res = await handler(req)
+    expect(res.headers.get('X-Request-Id')).toBe(clientId)
+  })
+
+  it('returns X-Request-Id even on validation errors', async () => {
+    const res = await handler(makeRequest({}))
+    expect(res.status).toBe(400)
+    expect(res.headers.get('X-Request-Id')).toBeTruthy()
+  })
 })

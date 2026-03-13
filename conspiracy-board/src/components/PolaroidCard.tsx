@@ -71,7 +71,7 @@ export function PolaroidCard({
 
           {/* Title Strip */}
           <div className="px-3 py-2 text-center">
-            <span className="font-handwritten text-lg text-gray-900 leading-tight">
+            <span className="font-handwritten text-lg text-gray-900 leading-tight line-clamp-1">
               {node.title}
             </span>
           </div>

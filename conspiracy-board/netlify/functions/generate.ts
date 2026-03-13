@@ -131,12 +131,15 @@ function getClientIp(request: Request): string {
   )
 }
 
-function checkRateLimit(ip: string): boolean {
+function checkRateLimit(ip: string): { allowed: boolean; retryAfterSeconds?: number } {
   const now = Date.now()
   const timestamps = rateLimitMap.get(ip) ?? []
   const recent = timestamps.filter((t) => now - t < RATE_LIMIT_WINDOW_MS)
   if (recent.length >= RATE_LIMIT_MAX_REQUESTS) {
-    return false // rate limited
+    // Calculate when the oldest request in the window expires
+    const oldestInWindow = Math.min(...recent)
+    const retryAfterSeconds = Math.ceil((oldestInWindow + RATE_LIMIT_WINDOW_MS - now) / 1000)
+    return { allowed: false, retryAfterSeconds }
   }
   recent.push(now)
   rateLimitMap.set(ip, recent)
@@ -152,7 +155,7 @@ function checkRateLimit(ip: string): boolean {
     console.log(JSON.stringify({ event: 'rate_limit_cleanup', sizeBefore, sizeAfter: rateLimitMap.size }))
   }
 
-  return true // allowed
+  return { allowed: true }
 }
 
 /** @internal Exported for testing only */
@@ -282,12 +285,17 @@ export default async (request: Request): Promise<Response> => {
   }
 
   const clientIp = getClientIp(request)
-  if (!checkRateLimit(clientIp)) {
+  const rateLimitResult = checkRateLimit(clientIp)
+  if (!rateLimitResult.allowed) {
     console.log(JSON.stringify({ event: 'request_rejected', reason: 'rate_limited', requestId }))
-    return jsonResponse({
+    const response = jsonResponse({
       error: 'rate_limited',
       message: 'Too many investigations in progress. Please wait before starting another.',
     }, 429, requestId)
+    if (rateLimitResult.retryAfterSeconds) {
+      response.headers.set('Retry-After', String(rateLimitResult.retryAfterSeconds))
+    }
+    return response
   }
 
   const requestStartMs = Date.now()

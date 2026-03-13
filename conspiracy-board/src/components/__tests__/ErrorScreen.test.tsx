@@ -12,6 +12,7 @@ function filterProps(props: Record<string, unknown>) {
 }
 
 vi.mock('framer-motion', () => ({
+  useReducedMotion: () => false,
   motion: {
     div: ({ children, ...props }: React.PropsWithChildren<Record<string, unknown>>) =>
       <div {...filterProps(props)}>{children}</div>,

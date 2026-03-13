@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import {
   LOADING_MESSAGES,
   SLOW_LOADING_MESSAGES,
@@ -12,9 +12,11 @@ import {
 
 interface LoadingScreenProps {
   onTimeout: () => void
+  onCancel: () => void
 }
 
-export function LoadingScreen({ onTimeout }: LoadingScreenProps) {
+export function LoadingScreen({ onTimeout, onCancel }: LoadingScreenProps) {
+  const prefersReducedMotion = useReducedMotion()
   const [messageIndex, setMessageIndex] = useState(0)
   const [showStamp, setShowStamp] = useState(false)
   const [phase, setPhase] = useState<'normal' | 'slow' | 'timeout'>('normal')
@@ -90,15 +92,15 @@ export function LoadingScreen({ onTimeout }: LoadingScreenProps) {
             key={i}
             className="h-3 bg-white/20 rounded-sm"
             style={{ width: `${width * 100}%` }}
-            initial={{ opacity: 0, scaleX: 0 }}
+            initial={prefersReducedMotion ? false : { opacity: 0, scaleX: 0 }}
             animate={{ opacity: 1, scaleX: 1 }}
-            transition={{ delay: 0.2 + i * 0.1, duration: 0.2 }}
+            transition={prefersReducedMotion ? { duration: 0 } : { delay: 0.2 + i * 0.1, duration: 0.2 }}
           >
             <motion.div
               className="h-full bg-landing-bg rounded-sm"
-              initial={{ scaleX: 0 }}
+              initial={prefersReducedMotion ? false : { scaleX: 0 }}
               animate={{ scaleX: 1 }}
-              transition={{ delay: 0.4 + i * 0.1, duration: 0.15 }}
+              transition={prefersReducedMotion ? { duration: 0 } : { delay: 0.4 + i * 0.1, duration: 0.15 }}
               style={{ transformOrigin: 'left' }}
             />
           </motion.div>
@@ -122,12 +124,23 @@ export function LoadingScreen({ onTimeout }: LoadingScreenProps) {
       </AnimatePresence>
 
       {/* Blinking cursor */}
-      <motion.span
-        className="inline-block w-2 h-5 bg-landing-accent mt-4"
-        aria-hidden="true"
-        animate={{ opacity: [1, 0, 1] }}
-        transition={{ duration: 1, repeat: Infinity }}
-      />
+      {!prefersReducedMotion && (
+        <motion.span
+          className="inline-block w-2 h-5 bg-landing-accent mt-4"
+          aria-hidden="true"
+          animate={{ opacity: [1, 0, 1] }}
+          transition={{ duration: 1, repeat: Infinity }}
+        />
+      )}
+
+      {/* Cancel button */}
+      <button
+        onClick={onCancel}
+        className="mt-8 font-typewriter text-sm px-6 py-2 rounded-lg border border-white/20 text-white/50 hover:text-white hover:border-white/40 focus:outline-none focus:ring-2 focus:ring-landing-accent focus:ring-offset-2 focus:ring-offset-landing-bg transition-all"
+        data-testid="cancel-button"
+      >
+        Cancel
+      </button>
     </motion.div>
   )
 }

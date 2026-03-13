@@ -27,13 +27,13 @@ Comedic AI-powered SPA: user enters two concepts, Claude generates a 7-node cons
 conspiracy-board/
 ├── src/
 │   ├── components/
-│   │   ├── LandingScreen.tsx      # Dark input screen, example chips, validation
-│   │   ├── LoadingScreen.tsx      # CLASSIFIED stamp, redacted lines, timeout
+│   │   ├── LandingScreen.tsx      # Dark input screen, example chips, validation, char counters
+│   │   ├── LoadingScreen.tsx      # CLASSIFIED stamp, redacted lines, timeout, cancel button
 │   │   ├── Corkboard.tsx          # Board container, layout, reveal orchestration
 │   │   ├── PolaroidCard.tsx       # Card with 3D flip (front: emoji+teaser, back: briefing)
 │   │   ├── RedString.tsx          # SVG path with stroke-dash animation
 │   │   ├── CaseFileStamp.tsx      # Classification stamp overlay
-│   │   ├── ErrorScreen.tsx        # Themed error with retry
+│   │   ├── ErrorScreen.tsx        # Error-type-aware display (timeout/rate-limit/generic) with retry
 │   │   ├── ErrorBoundary.tsx     # React Error Boundary — catches render crashes, shows ErrorScreen
 │   │   └── __tests__/             # Component tests (one per component)
 │   ├── lib/
@@ -102,7 +102,7 @@ npx tsc --noEmit           # Type check only
 ### Backend
 - **Endpoints**: `POST /.netlify/functions/generate` (redirected from `/api/generate`), `GET /.netlify/functions/health` (redirected from `/api/health`, `/api/health/live`, `/api/health/ready`)
 - **Flow**: Maintenance mode check → rate limit check → circuit breaker check → validate inputs → server-side blocklist → construct Claude prompt → call API → validate JSON → log success metrics → return
-- **Rate limiting**: Per-IP, 20 requests per 15-minute window. In-memory (resets on cold start). Extracts IP from `x-nf-client-connection-ip` or `x-forwarded-for`. Returns 429 with themed message. `_resetRateLimiter()` exported for test isolation.
+- **Rate limiting**: Per-IP, 20 requests per 15-minute window. In-memory (resets on cold start). Extracts IP from `x-nf-client-connection-ip` or `x-forwarded-for`. Returns 429 with themed message and `Retry-After` header (seconds). `checkRateLimit()` returns `{ allowed: boolean, retryAfterSeconds?: number }`. `_resetRateLimiter()` exported for test isolation.
 - **Circuit breaker**: After 3 consecutive API failures, requests fail fast (503) for 30s instead of waiting for a timeout. Resets on any successful call. Validation failures (bad AI output) don't trip it. In-memory (resets on cold start). `_resetCircuitBreaker()` exported for test isolation.
 - **Correlation IDs**: Every request gets a UUID (`X-Request-Id` header). Client-provided IDs are echoed. Included in all structured log entries and response headers. Client-side `ApiError` captures `requestId` for end-to-end tracing.
 - **Anthropic SDK**: Uses `new Anthropic({ timeout: 25_000 })` — reads `ANTHROPIC_API_KEY` from env automatically. Timeout is configurable via `ANTHROPIC_TIMEOUT_MS` env var (default 25s). SDK default of 10 minutes is too long for serverless.
@@ -192,9 +192,10 @@ No database. Single API response type — see `src/types/conspiracy.ts`:
 - Icon-only buttons: `aria-label` required
 - Decorative elements: `alt=""` or `aria-hidden`
 - Error messages: `role="alert"` for screen reader announcement (already on ErrorScreen + LandingScreen)
-- **Reduced motion**: `prefers-reduced-motion` is respected at two levels:
+- **Reduced motion**: `prefers-reduced-motion` is respected at three levels:
   - **CSS**: `@media (prefers-reduced-motion: reduce)` in `index.css` disables `.animate-stamp` keyframe and makes `.preserve-3d` transition instant
-  - **JS**: `useReducedMotion()` from framer-motion in `Corkboard.tsx` — skips card/string reveal animations (`animate={false}`), zeroes CaseFileStamp delay, and immediately sets `revealComplete=true`
+  - **JS (Corkboard)**: `useReducedMotion()` from framer-motion in `Corkboard.tsx` — skips card/string reveal animations (`animate={false}`), zeroes CaseFileStamp delay, and immediately sets `revealComplete=true`
+  - **JS (LoadingScreen/ErrorScreen)**: `useReducedMotion()` in `LoadingScreen.tsx` skips redacted line entrance animations and blinking cursor; in `ErrorScreen.tsx` disables the flickering heading animation
 - **Escape key**: Pressing Escape on the corkboard dismisses any flipped card (document-level `keydown` listener in `Corkboard.tsx`)
 - **Focus rings**: All buttons and interactive elements have visible `focus:ring-2` styles. Pattern:
   - On dark backgrounds: `focus:outline-none focus:ring-2 focus:ring-landing-accent focus:ring-offset-2 focus:ring-offset-landing-bg`
@@ -259,6 +260,8 @@ board ──(new investigation)──→ landing ←─────────�
 - `App.tsx` owns all state transitions via `useCallback` handlers
 - `AbortController` signal is wired through `generateConspiracy()` to `fetch()` for proper request cancellation
 - Board data is held in `useState` — reset to `null` on "New Investigation" and on error retry
+- **Error typing**: `App.tsx` tracks `errorType` state (`'timeout' | 'rate_limited' | 'generic'`) and passes it to `ErrorScreen`. Timeout errors show "SIGNAL LOST", rate limits show "SLOW DOWN, AGENT", generic errors show a random themed message.
+- **Cancel from loading**: `LoadingScreen` has `onCancel` prop that aborts the request and returns to landing (unlike `onTimeout` which goes to error screen)
 
 ## Known Bugs (Unfixed)
 

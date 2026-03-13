@@ -8,11 +8,13 @@ import { generateConspiracy, ApiError } from '@/lib/api.ts'
 import type { ConspiracyChain } from '@/types/conspiracy.ts'
 
 type AppScreen = 'landing' | 'loading' | 'board' | 'error'
+type ErrorType = 'timeout' | 'rate_limited' | 'generic'
 
 function App() {
   const [screen, setScreen] = useState<AppScreen>('landing')
   const [boardData, setBoardData] = useState<ConspiracyChain | null>(null)
   const [lastInputs, setLastInputs] = useState<{ a: string; b: string }>({ a: '', b: '' })
+  const [errorType, setErrorType] = useState<ErrorType>('generic')
   const abortControllerRef = useRef<AbortController | null>(null)
 
   const handleSubmit = useCallback(async (conceptA: string, conceptB: string) => {
@@ -32,9 +34,11 @@ function App() {
       if (error instanceof ApiError) {
         const rid = error.requestId ? ` [requestId: ${error.requestId}]` : ''
         console.error(`Generation failed: API returned ${error.statusCode} — ${error.message}${rid}`)
+        setErrorType(error.statusCode === 429 ? 'rate_limited' : 'generic')
       } else {
         const message = error instanceof Error ? error.message : 'Unknown error'
         console.error(`Generation failed: ${message}`)
+        setErrorType('generic')
       }
       setScreen('error')
     }
@@ -42,7 +46,13 @@ function App() {
 
   const handleTimeout = useCallback(() => {
     abortControllerRef.current?.abort()
+    setErrorType('timeout')
     setScreen('error')
+  }, [])
+
+  const handleCancel = useCallback(() => {
+    abortControllerRef.current?.abort()
+    setScreen('landing')
   }, [])
 
   const handleRetry = useCallback(() => {
@@ -69,7 +79,7 @@ function App() {
         )}
 
         {screen === 'loading' && (
-          <LoadingScreen key="loading" onTimeout={handleTimeout} />
+          <LoadingScreen key="loading" onTimeout={handleTimeout} onCancel={handleCancel} />
         )}
 
         {screen === 'board' && boardData && (
@@ -84,6 +94,7 @@ function App() {
           <ErrorScreen
             key="error"
             onRetry={handleRetry}
+            errorType={errorType}
           />
         )}
       </AnimatePresence>

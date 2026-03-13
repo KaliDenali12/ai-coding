@@ -1,16 +1,34 @@
 import { useMemo } from 'react'
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 import { ERROR_MESSAGES } from '@/lib/constants.ts'
+
+type ErrorType = 'timeout' | 'rate_limited' | 'generic'
 
 interface ErrorScreenProps {
   onRetry: () => void
+  errorType?: ErrorType
 }
 
-export function ErrorScreen({ onRetry }: ErrorScreenProps) {
-  const errorVariant = useMemo(
-    () => ERROR_MESSAGES[Math.floor(Math.random() * ERROR_MESSAGES.length)],
-    [],
-  )
+const TIMEOUT_ERROR = {
+  heading: 'SIGNAL LOST',
+  message: 'Our sources took too long to respond. This usually resolves itself — hit "Try Again" to retry.',
+  style: 'classified' as const,
+}
+
+const RATE_LIMITED_ERROR = {
+  heading: 'SLOW DOWN, AGENT',
+  message: 'Too many investigations in a short time. Wait a few minutes before trying again.',
+  style: 'redacted' as const,
+}
+
+export function ErrorScreen({ onRetry, errorType = 'generic' }: ErrorScreenProps) {
+  const prefersReducedMotion = useReducedMotion()
+
+  const errorVariant = useMemo(() => {
+    if (errorType === 'timeout') return TIMEOUT_ERROR
+    if (errorType === 'rate_limited') return RATE_LIMITED_ERROR
+    return ERROR_MESSAGES[Math.floor(Math.random() * ERROR_MESSAGES.length)]
+  }, [errorType])
 
   return (
     <motion.div
@@ -33,8 +51,8 @@ export function ErrorScreen({ onRetry }: ErrorScreenProps) {
       {errorVariant.style === 'flickering' && (
         <motion.h1
           className="font-typewriter text-3xl md:text-5xl text-landing-accent mb-8"
-          animate={{ opacity: [1, 0.3, 1, 0.5, 1] }}
-          transition={{ duration: 2, repeat: Infinity }}
+          animate={prefersReducedMotion ? {} : { opacity: [1, 0.3, 1, 0.5, 1] }}
+          transition={prefersReducedMotion ? {} : { duration: 2, repeat: Infinity }}
         >
           {errorVariant.heading}
         </motion.h1>

@@ -82,39 +82,49 @@ export function LandingScreen({ onSubmit, initialA = '', initialB = '' }: Landin
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.2 }}
       >
-        <input
-          type="text"
-          value={conceptA}
-          onChange={(e) => {
-            setConceptA(e.target.value)
-            setError(null)
-          }}
-          onKeyDown={handleKeyDown}
-          placeholder="Penguins"
-          maxLength={50}
-          className="flex-1 bg-white/5 border border-white/20 rounded-lg px-4 py-3 text-white font-body text-lg placeholder:text-white/30 focus:outline-none focus:border-landing-accent focus:ring-1 focus:ring-landing-accent transition-colors"
-          aria-label="First concept"
-          data-testid="input-a"
-        />
+        <div className="flex-1">
+          <input
+            type="text"
+            value={conceptA}
+            onChange={(e) => {
+              setConceptA(e.target.value)
+              setError(null)
+            }}
+            onKeyDown={handleKeyDown}
+            placeholder="Penguins"
+            maxLength={50}
+            className="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-3 text-white font-body text-lg placeholder:text-white/30 focus:outline-none focus:border-landing-accent focus:ring-1 focus:ring-landing-accent transition-colors"
+            aria-label="First concept"
+            data-testid="input-a"
+          />
+          <span className="block text-right text-white/30 text-xs font-body mt-1 pr-1" aria-hidden="true">
+            {conceptA.length}/50
+          </span>
+        </div>
 
         <span className="text-white/40 font-typewriter text-2xl self-center hidden md:block" aria-hidden="true">
           +
         </span>
 
-        <input
-          type="text"
-          value={conceptB}
-          onChange={(e) => {
-            setConceptB(e.target.value)
-            setError(null)
-          }}
-          onKeyDown={handleKeyDown}
-          placeholder="IKEA Furniture"
-          maxLength={50}
-          className="flex-1 bg-white/5 border border-white/20 rounded-lg px-4 py-3 text-white font-body text-lg placeholder:text-white/30 focus:outline-none focus:border-landing-accent focus:ring-1 focus:ring-landing-accent transition-colors"
-          aria-label="Second concept"
-          data-testid="input-b"
-        />
+        <div className="flex-1">
+          <input
+            type="text"
+            value={conceptB}
+            onChange={(e) => {
+              setConceptB(e.target.value)
+              setError(null)
+            }}
+            onKeyDown={handleKeyDown}
+            placeholder="IKEA Furniture"
+            maxLength={50}
+            className="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-3 text-white font-body text-lg placeholder:text-white/30 focus:outline-none focus:border-landing-accent focus:ring-1 focus:ring-landing-accent transition-colors"
+            aria-label="Second concept"
+            data-testid="input-b"
+          />
+          <span className="block text-right text-white/30 text-xs font-body mt-1 pr-1" aria-hidden="true">
+            {conceptB.length}/50
+          </span>
+        </div>
       </motion.div>
 
       {/* Error Message */}

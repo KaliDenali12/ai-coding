@@ -3,11 +3,13 @@ import { FONT_CATEGORIES } from '@/types/conspiracy.ts'
 
 export class ApiError extends Error {
   statusCode: number
+  requestId: string | null
 
-  constructor(message: string, statusCode: number) {
+  constructor(message: string, statusCode: number, requestId: string | null = null) {
     super(message)
     this.name = 'ApiError'
     this.statusCode = statusCode
+    this.requestId = requestId
   }
 }
 
@@ -83,11 +85,14 @@ export async function generateConspiracy(
     signal: effectiveSignal,
   })
 
+  const requestId = response.headers.get('X-Request-Id')
+
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({ message: 'The investigation could not be completed. Please try again.' }))
     throw new ApiError(
       (errorData as { message?: string }).message ?? 'The investigation could not be completed. Please try again.',
       response.status,
+      requestId,
     )
   }
 
@@ -95,7 +100,7 @@ export async function generateConspiracy(
   try {
     data = await response.json()
   } catch {
-    throw new ApiError('Our server returned an unreadable response. Please try again.', 502)
+    throw new ApiError('Our server returned an unreadable response. Please try again.', 502, requestId)
   }
   return validateChainResponse(data)
 }

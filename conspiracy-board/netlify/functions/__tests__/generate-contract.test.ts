@@ -53,6 +53,7 @@ describe('generate handler — API contract', () => {
     const mod = await import('../generate.ts')
     handler = mod.default
     mod._resetRateLimiter()
+    mod._resetCircuitBreaker()
   })
 
   // ── HTTP Method Contract ──────────────────────────────────────

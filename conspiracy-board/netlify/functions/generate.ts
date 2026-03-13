@@ -160,12 +160,54 @@ export function _resetRateLimiter(): void {
   rateLimitMap.clear()
 }
 
+// --- Circuit Breaker ---
+// Prevents hammering the Anthropic API during outages. After consecutive
+// failures, requests fail fast (~0ms) instead of waiting 25s for a timeout.
+// State resets on cold start (acceptable for serverless).
+const CIRCUIT_BREAKER_THRESHOLD = 3  // consecutive failures to open
+const CIRCUIT_BREAKER_COOLDOWN_MS = 30_000 // 30s before allowing a probe
+
+let circuitFailureCount = 0
+let circuitOpenedAt = 0 // timestamp when circuit opened, 0 = closed
+
+function isCircuitOpen(): boolean {
+  if (circuitFailureCount < CIRCUIT_BREAKER_THRESHOLD) return false
+  const elapsed = Date.now() - circuitOpenedAt
+  // Allow a single probe request after cooldown (half-open state)
+  if (elapsed >= CIRCUIT_BREAKER_COOLDOWN_MS) return false
+  return true
+}
+
+function recordCircuitSuccess(): void {
+  circuitFailureCount = 0
+  circuitOpenedAt = 0
+}
+
+function recordCircuitFailure(): void {
+  circuitFailureCount++
+  if (circuitFailureCount >= CIRCUIT_BREAKER_THRESHOLD) {
+    circuitOpenedAt = Date.now()
+  }
+}
+
+/** @internal Exported for testing only */
+export function _resetCircuitBreaker(): void {
+  circuitFailureCount = 0
+  circuitOpenedAt = 0
+}
+
+// --- Correlation ID ---
+function generateRequestId(): string {
+  // Compact, URL-safe, collision-resistant ID for request tracing.
+  // crypto.randomUUID() is available in Node 19+ and Netlify Functions runtime.
+  return crypto.randomUUID()
+}
+
 // --- Response Helper ---
-function jsonResponse(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { 'Content-Type': 'application/json' },
-  })
+function jsonResponse(body: unknown, status = 200, requestId?: string): Response {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (requestId) headers['X-Request-Id'] = requestId
+  return new Response(JSON.stringify(body), { status, headers })
 }
 
 // --- Validation ---
@@ -220,25 +262,32 @@ function validateResponse(data: unknown): ChainResponse {
 
 // --- Handler ---
 export default async (request: Request): Promise<Response> => {
+  // Generate a correlation ID for every request. Propagated through all logs
+  // and returned in X-Request-Id response header for client-side correlation.
+  const requestId = request.headers.get('x-request-id') ?? generateRequestId()
+
   if (request.method !== 'POST') {
-    return jsonResponse({ error: 'method_not_allowed', message: 'Method not allowed' }, 405)
+    console.log(JSON.stringify({ event: 'request_rejected', reason: 'method_not_allowed', method: request.method, requestId }))
+    return jsonResponse({ error: 'method_not_allowed', message: 'Method not allowed' }, 405, requestId)
   }
 
   // Maintenance mode: set MAINTENANCE_MODE=true in Netlify env vars to disable
   // API calls without deploying code. Returns a themed response immediately.
   if (process.env.MAINTENANCE_MODE === 'true') {
+    console.log(JSON.stringify({ event: 'request_rejected', reason: 'maintenance_mode', requestId }))
     return jsonResponse({
       error: 'maintenance',
       message: 'Our intelligence network is undergoing scheduled maintenance. Please try again later.',
-    }, 503)
+    }, 503, requestId)
   }
 
   const clientIp = getClientIp(request)
   if (!checkRateLimit(clientIp)) {
+    console.log(JSON.stringify({ event: 'request_rejected', reason: 'rate_limited', requestId }))
     return jsonResponse({
       error: 'rate_limited',
       message: 'Too many investigations in progress. Please wait before starting another.',
-    }, 429)
+    }, 429, requestId)
   }
 
   const requestStartMs = Date.now()
@@ -247,41 +296,52 @@ export default async (request: Request): Promise<Response> => {
     try {
       rawBody = await request.text()
     } catch {
-      return jsonResponse({ error: 'validation', message: 'Could not read request body.' }, 400)
+      return jsonResponse({ error: 'validation', message: 'Could not read request body.' }, 400, requestId)
     }
 
     if (rawBody.length > 10_000) {
-      return jsonResponse({ error: 'validation', message: 'Request too large.' }, 413)
+      return jsonResponse({ error: 'validation', message: 'Request too large.' }, 413, requestId)
     }
 
     let body: { conceptA?: string; conceptB?: string }
     try {
       body = JSON.parse(rawBody) as { conceptA?: string; conceptB?: string }
     } catch {
-      return jsonResponse({ error: 'validation', message: 'Invalid JSON in request body.' }, 400)
+      return jsonResponse({ error: 'validation', message: 'Invalid JSON in request body.' }, 400, requestId)
     }
     const { conceptA, conceptB } = body
 
     if (!conceptA || !conceptB || typeof conceptA !== 'string' || typeof conceptB !== 'string') {
-      return jsonResponse({ error: 'validation', message: 'Both concepts are required.' }, 400)
+      return jsonResponse({ error: 'validation', message: 'Both concepts are required.' }, 400, requestId)
     }
 
     const a = conceptA.trim()
     const b = conceptB.trim()
 
     if (a.length > 50 || b.length > 50) {
-      return jsonResponse({ error: 'validation', message: 'Each concept must be 50 characters or fewer.' }, 400)
+      return jsonResponse({ error: 'validation', message: 'Each concept must be 50 characters or fewer.' }, 400, requestId)
     }
 
     if (a.toLowerCase() === b.toLowerCase()) {
-      return jsonResponse({ error: 'validation', message: 'Concepts must be different.' }, 400)
+      return jsonResponse({ error: 'validation', message: 'Concepts must be different.' }, 400, requestId)
     }
 
     if (isBlocked(a) || isBlocked(b)) {
+      console.log(JSON.stringify({ event: 'request_rejected', reason: 'blocked_content', requestId }))
       return jsonResponse({
         error: 'blocked',
         message: 'This subject is classified beyond our clearance level. Try something else.',
-      }, 400)
+      }, 400, requestId)
+    }
+
+    // Circuit breaker: fail fast if Anthropic API has been failing consecutively.
+    // Saves users from waiting 25s for a timeout during outages.
+    if (isCircuitOpen()) {
+      console.log(JSON.stringify({ event: 'request_rejected', reason: 'circuit_open', requestId }))
+      return jsonResponse({
+        error: 'server_error',
+        message: 'Our sources are temporarily unavailable. Please try again in a moment.',
+      }, 503, requestId)
     }
 
     // Call Claude API
@@ -324,19 +384,28 @@ export default async (request: Request): Promise<Response> => {
     }
 
     const validated = validateResponse(parsed)
+    recordCircuitSuccess()
 
-    // Structured success log for observability (latency, token usage)
+    // Structured success log for observability (latency, token usage, sizes)
     const latencyMs = Date.now() - requestStartMs
+    const responseBody = JSON.stringify(validated)
     console.log(JSON.stringify({
       event: 'generate_success',
+      requestId,
       latencyMs,
       inputTokens: message.usage?.input_tokens,
       outputTokens: message.usage?.output_tokens,
       cacheRead: message.usage?.cache_read_input_tokens ?? 0,
+      cacheWrite: message.usage?.cache_creation_input_tokens ?? 0,
       model: message.model,
+      requestSizeBytes: rawBody.length,
+      responseSizeBytes: responseBody.length,
     }))
 
-    return jsonResponse(validated)
+    return new Response(responseBody, {
+      status: 200,
+      headers: { 'Content-Type': 'application/json', 'X-Request-Id': requestId },
+    })
   } catch (error) {
     const errorName = error instanceof Error ? error.name : 'UnknownError'
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
@@ -345,33 +414,40 @@ export default async (request: Request): Promise<Response> => {
     // Uses error.status (set by the SDK) instead of instanceof to remain
     // compatible with module mocking in tests.
     const sdkStatus = (error as { status?: number }).status
+    const latencyMs = Date.now() - requestStartMs
+
+    // Record API-level failures for circuit breaker (timeouts, rate limits, auth).
+    // Validation failures (bad AI output) don't count — the API itself is working.
+    const isValidation = errorMessage.includes('node ') || errorMessage.includes('chain must') || errorMessage.includes('missing ')
+    if (!isValidation) {
+      recordCircuitFailure()
+    }
+
     if (errorName === 'APIConnectionTimeoutError' || (errorName === 'APIConnectionError' && errorMessage.includes('timed out'))) {
-      console.error('Anthropic API timeout:', errorMessage)
+      console.error(JSON.stringify({ event: 'generate_error', errorType: 'timeout', errorName, requestId, latencyMs }))
       return jsonResponse({
         error: 'server_error',
         message: 'Our sources are currently unreachable. Please try again in a moment.',
-      }, 504)
+      }, 504, requestId)
     }
 
     if (sdkStatus === 429) {
-      console.error('Anthropic API rate limited:', errorMessage)
+      console.error(JSON.stringify({ event: 'generate_error', errorType: 'api_rate_limited', errorName, requestId, latencyMs }))
       return jsonResponse({
         error: 'server_error',
         message: 'Our intelligence network is overwhelmed. Please try again shortly.',
-      }, 503)
+      }, 503, requestId)
     }
 
     if (sdkStatus === 401) {
-      console.error('CRITICAL — Anthropic API authentication failed:', errorMessage)
+      console.error(JSON.stringify({ event: 'generate_error', errorType: 'auth_failure', severity: 'CRITICAL', errorName, requestId, latencyMs }))
     } else {
-      console.error(`Generate function error: [${errorName}] ${errorMessage}`)
+      console.error(JSON.stringify({ event: 'generate_error', errorType: 'unknown', errorName, errorMessage, requestId, latencyMs }))
     }
-
-    const isValidation = errorMessage.includes('node ') || errorMessage.includes('chain must') || errorMessage.includes('missing ')
 
     return jsonResponse({
       error: isValidation ? 'invalid_response' : 'server_error',
       message: 'Our sources indicate this investigation has been shut down. Please try again or investigate different subjects.',
-    }, isValidation ? 502 : 500)
+    }, isValidation ? 502 : 500, requestId)
   }
 }

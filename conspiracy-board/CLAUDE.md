@@ -7,7 +7,7 @@ Comedic AI-powered SPA: user enters two concepts, Claude generates a 7-node cons
 - **Always deploy after changes**: Push to `main` on GitHub; Netlify auto-deploys.
 - **Content safety is non-negotiable**: 3-layer safety (client blocklist, server blocklist, Claude system prompt). Every change touching AI output or user input must respect all three.
 - **No partial boards**: Board renders completely or shows a themed error. Never render a half-built chain.
-- **Run tests before committing**: `npm test` (279+ tests, all must pass).
+- **Run tests before committing**: `npm test` (295+ tests, all must pass).
 
 ## Tech Stack
 
@@ -53,7 +53,8 @@ conspiracy-board/
 ├── netlify/
 │   └── functions/
 │       ├── generate.ts            # Claude API proxy: validate → prompt → call → validate → respond
-│       └── __tests__/generate.test.ts
+│       ├── health.ts              # Health check endpoint (/live, /ready, full)
+│       └── __tests__/             # Handler, contract, concurrency, health tests
 ├── .github/
 │   ├── dependabot.yml             # Weekly npm dependency update PRs
 │   └── workflows/ci.yml           # CI: lint, typecheck, test on PRs + daily vulnerability scan
@@ -74,7 +75,7 @@ npm run dev                # Vite dev server (port 5173)
 npx netlify dev            # Dev with Netlify Functions
 npm run build              # tsc -b && vite build → dist/
 npm run lint               # eslint (flat config, must pass)
-npm test                   # vitest run (279+ tests)
+npm test                   # vitest run (295+ tests)
 npm run test:watch         # vitest watch mode
 npx tsc --noEmit           # Type check only
 ```
@@ -99,9 +100,11 @@ npx tsc --noEmit           # Type check only
 - **Fonts**: 12 Google Fonts loaded via `<link>` in `index.html`. Custom CSS classes defined in `@theme`.
 
 ### Backend
-- **Single endpoint**: `POST /.netlify/functions/generate` (redirected from `/api/generate`)
-- **Flow**: Maintenance mode check → rate limit check → validate inputs → server-side blocklist → construct Claude prompt → call API → validate JSON → log success metrics → return
+- **Endpoints**: `POST /.netlify/functions/generate` (redirected from `/api/generate`), `GET /.netlify/functions/health` (redirected from `/api/health`, `/api/health/live`, `/api/health/ready`)
+- **Flow**: Maintenance mode check → rate limit check → circuit breaker check → validate inputs → server-side blocklist → construct Claude prompt → call API → validate JSON → log success metrics → return
 - **Rate limiting**: Per-IP, 20 requests per 15-minute window. In-memory (resets on cold start). Extracts IP from `x-nf-client-connection-ip` or `x-forwarded-for`. Returns 429 with themed message. `_resetRateLimiter()` exported for test isolation.
+- **Circuit breaker**: After 3 consecutive API failures, requests fail fast (503) for 30s instead of waiting for a timeout. Resets on any successful call. Validation failures (bad AI output) don't trip it. In-memory (resets on cold start). `_resetCircuitBreaker()` exported for test isolation.
+- **Correlation IDs**: Every request gets a UUID (`X-Request-Id` header). Client-provided IDs are echoed. Included in all structured log entries and response headers. Client-side `ApiError` captures `requestId` for end-to-end tracing.
 - **Anthropic SDK**: Uses `new Anthropic({ timeout: 25_000 })` — reads `ANTHROPIC_API_KEY` from env automatically. Timeout is configurable via `ANTHROPIC_TIMEOUT_MS` env var (default 25s). SDK default of 10 minutes is too long for serverless.
 - **Prompt caching**: System prompt uses `cache_control: { type: 'ephemeral' }` for Anthropic prompt caching (90% input token discount on cache hits)
 - **Model**: `claude-sonnet-4-20250514` with `max_tokens: 4000`
@@ -109,6 +112,9 @@ npx tsc --noEmit           # Type check only
 - **Request size limit**: 10KB enforced by reading actual body (`request.text()`) — not the Content-Length header
 - **Error responses**: Themed messages, never leak raw API errors. Anthropic SDK errors are classified: timeout → 504, rate limit → 503, auth → 500 with CRITICAL log, validation → 502, other → 500.
 - **Function timeout**: Set to 26s in `netlify.toml` `[functions]` block (Netlify default is 10s, too tight for Anthropic calls).
+- **Health endpoint** (`netlify/functions/health.ts`): `GET /api/health` (full), `/api/health/live` (liveness), `/api/health/ready` (readiness). Checks runtime, API key presence, maintenance mode, SDK timeout config. Returns structured JSON with per-component status and latency. Does NOT call Anthropic API.
+- **Structured logging**: All paths (success, errors, rejections) emit structured JSON with `event`, `requestId`, `latencyMs`. See `docs/RUNBOOKS.md` for log event reference.
+- **Operational runbooks**: `docs/RUNBOOKS.md` — 10 runbooks covering all identified failure modes with symptoms, diagnosis, resolution, and prevention.
 
 ### Content Safety (3 Layers)
 1. **Client blocklist** (`src/lib/blocklist.ts`): Normalizes input (leet-speak substitution), checks against blocked terms
@@ -199,6 +205,7 @@ No database. Single API response type — see `src/types/conspiracy.ts`:
 
 - **Tailwind v4**: No `tailwind.config.ts`. Colors/fonts defined in `@theme` block in `index.css`. Don't create a config file.
 - **Blocklist duplication**: `src/lib/blocklist.ts` and `netlify/functions/generate.ts` have separate copies. Update BOTH.
+- **Test isolation for generate handler**: Tests must call both `mod._resetRateLimiter()` AND `mod._resetCircuitBreaker()` in `beforeEach`. Without this, error tests accumulate failures and trip the circuit breaker, causing unrelated tests to get 503 instead of hitting the API mock.
 - **Validation message divergence (intentional)**: Client `checkInputs()` uses themed messages ("Both fields are required.", "You can't investigate yourself...") while server `generate.ts` uses plain backstop messages ("Both concepts are required.", "Concepts must be different."). This is by design — the client shows user-facing copy, the server is a security fallback for direct API callers. Don't "fix" by making them match.
 - **Blocklist normalization pipeline**: `normalizeInput()` applies: (1) strip zero-width chars, (2) NFKD normalization (fullwidth→ASCII), (3) strip combining marks, (4) lowercase, (5) Cyrillic/Greek confusable→Latin mapping, (6) leet-speak substitution, (7) strip separators `[_.+-]+`, (8) collapse whitespace. Then `isBlocked()` does a dual-pass check: once with spaces (for multi-word terms like "school shooting") and once without spaces (catches space-insertion bypass like "h itler"). Duplicated in both `blocklist.ts` and `generate.ts`.
 - **`.npmrc` has `ignore-scripts=true`**: Supply chain hardening. Netlify build command runs `npm rebuild esbuild` before build since esbuild needs its postinstall script.

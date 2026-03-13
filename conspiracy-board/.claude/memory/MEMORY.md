@@ -4,7 +4,7 @@ Conspiracy Board: comedic AI web app connecting two concepts via a 7-node conspi
 
 ## Current State
 
-- **Test count**: 279 tests across 24 files (0 skipped). Post-consolidation: ~43 duplicates removed, ~27 decorative remain.
+- **Test count**: 295 tests across 25 files (0 skipped). Post-consolidation: ~43 duplicates removed, ~27 decorative remain.
 - **Audit reports**: `audit-reports/TEST_ARCHITECTURE_REPORT_001_2026-03-10.md`, `TEST_CONSOLIDATION_REPORT_001_2026-03-10.md`, `TEST_QUALITY_REPORT_001_2026-03-10.md` — see `testing.md` for antipatterns.
 - **Known bugs**: BUG-002 (FIXED), BUG-003 (FIXED), BUG-004a/b/c (FIXED), BUG-STATE-02 (FIXED). Only unfixed: BUG-005 (seededRandom inclusive range, negligible impact).
 - **State audit**: `audit-reports/25_STATE_MANAGEMENT_REPORT_01_2026-03-12_2055.md` — 2 fixes (ErrorBoundary recovery loop, stale boardData on retry). State architecture rated SOLID.
@@ -12,6 +12,7 @@ Conspiracy Board: comedic AI web app connecting two concepts via a 7-node conspi
 - **Resilience audit**: `audit-reports/20_ERROR_RECOVERY_REPORT_01_2026-03-11_2045.md` — Added SDK timeout (25s, was 10min default), error classification (504/503/500), client fetch fallback timeout, Netlify function timeout (26s).
 - **Perceived performance audit**: `audit-reports/26_PERCEIVED_PERFORMANCE_REPORT_01_2026-03-13_0950.md` — Tightened all animation timing (reveal 10.4s→6.35s, transitions 400-600ms→200-300ms, card flip 500→350ms). No business logic changes.
 - **DevOps audit**: `audit-reports/27_DEVOPS_AUDIT_REPORT_01_2026-03-13_1020.md` — Added GitHub Actions CI, tests in Netlify build, MAINTENANCE_MODE kill switch, success-path structured logging.
+- **Observability audit**: `audit-reports/29_OBSERVABILITY_REPORT_001_2026-03-13_2310.md` — Added health endpoints (`/api/health`, `/live`, `/ready`), structured JSON logging on all paths, request correlation IDs (`X-Request-Id`), circuit breaker (3 failures → 30s cooldown), client-side requestId tracing, 10 operational runbooks (`docs/RUNBOOKS.md`). Maturity: Basic → Moderate. Remaining gaps: no uptime monitoring service, no alerting pipeline, no client-side error reporting (Sentry).
 - **Deploy URL**: TBD (needs Netlify setup + `ANTHROPIC_API_KEY`)
 - **Status**: All P0/P1 features complete. P2 remaining: share/export, sound effects.
 - **Branch**: `master`

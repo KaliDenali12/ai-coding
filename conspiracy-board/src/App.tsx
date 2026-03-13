@@ -30,7 +30,8 @@ function App() {
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') return
       if (error instanceof ApiError) {
-        console.error(`Generation failed: API returned ${error.statusCode} — ${error.message}`)
+        const rid = error.requestId ? ` [requestId: ${error.requestId}]` : ''
+        console.error(`Generation failed: API returned ${error.statusCode} — ${error.message}${rid}`)
       } else {
         const message = error instanceof Error ? error.message : 'Unknown error'
         console.error(`Generation failed: ${message}`)

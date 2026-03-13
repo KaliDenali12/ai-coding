@@ -13,16 +13,23 @@ const validChainData = {
   classification_level: 'TOP SECRET',
 }
 
+// Helper: creates a mock Response-like object with headers
+function mockResponse(opts: { ok: boolean; status?: number; json: () => Promise<unknown> }) {
+  return {
+    ...opts,
+    headers: new Headers({ 'X-Request-Id': 'test-request-id-123' }),
+  }
+}
+
 describe('generateConspiracy', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
   })
 
   it('sends POST request with correct parameters', async () => {
-    const mockFetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(validChainData),
-    })
+    const mockFetch = vi.fn().mockResolvedValue(
+      mockResponse({ ok: true, json: () => Promise.resolve(validChainData) }),
+    )
     vi.stubGlobal('fetch', mockFetch)
 
     await generateConspiracy({ conceptA: 'Cats', conceptB: 'Pizza' })
@@ -36,10 +43,9 @@ describe('generateConspiracy', () => {
   })
 
   it('returns validated chain data on success', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(validChainData),
-    }))
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
+      mockResponse({ ok: true, json: () => Promise.resolve(validChainData) }),
+    ))
 
     const result = await generateConspiracy({ conceptA: 'A', conceptB: 'B' })
     expect(result.chain).toHaveLength(7)
@@ -47,11 +53,9 @@ describe('generateConspiracy', () => {
   })
 
   it('throws ApiError on non-ok response with JSON error body', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: false,
-      status: 400,
-      json: () => Promise.resolve({ message: 'Both concepts are required.' }),
-    }))
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
+      mockResponse({ ok: false, status: 400, json: () => Promise.resolve({ message: 'Both concepts are required.' }) }),
+    ))
 
     await expect(
       generateConspiracy({ conceptA: 'A', conceptB: 'B' }),
@@ -63,15 +67,14 @@ describe('generateConspiracy', () => {
       expect(e).toBeInstanceOf(ApiError)
       expect((e as ApiError).statusCode).toBe(400)
       expect((e as ApiError).message).toBe('Both concepts are required.')
+      expect((e as ApiError).requestId).toBe('test-request-id-123')
     }
   })
 
   it('throws ApiError with fallback message when error body is not JSON', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: false,
-      status: 500,
-      json: () => Promise.reject(new Error('not json')),
-    }))
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
+      mockResponse({ ok: false, status: 500, json: () => Promise.reject(new Error('not json')) }),
+    ))
 
     try {
       await generateConspiracy({ conceptA: 'A', conceptB: 'B' })
@@ -83,10 +86,9 @@ describe('generateConspiracy', () => {
   })
 
   it('throws validation error when response has invalid chain structure', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({ chain: [], case_file_number: 'X', classification_level: 'Y' }),
-    }))
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
+      mockResponse({ ok: true, json: () => Promise.resolve({ chain: [], case_file_number: 'X', classification_level: 'Y' }) }),
+    ))
 
     await expect(
       generateConspiracy({ conceptA: 'A', conceptB: 'B' }),

@@ -293,6 +293,8 @@ board ──(new investigation)──→ landing ←─────────�
 
 **Rule**: Prevents mistakes on unrelated tasks → CLAUDE.md. Spans features → MEMORY.md. One feature only → sub-memory. Single line → inline comment.
 
+**Updating docs**: When you change code that affects a rule in CLAUDE.md, update CLAUDE.md. When you change a feature covered by a sub-memory file, update that file. If a new feature area doesn't fit any existing file, create a new one and add it to the table below.
+
 ### Sub-Memory Files — Load When Working On
 
 | File | When to load |

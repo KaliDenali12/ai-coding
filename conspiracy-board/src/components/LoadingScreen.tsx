@@ -72,6 +72,7 @@ export function LoadingScreen({ onTimeout, onCancel }: LoadingScreenProps) {
       transition={{ duration: 0.2 }}
       data-testid="loading-screen"
       role="status"
+      aria-busy="true"
       aria-label="Loading investigation results"
     >
       {/* CLASSIFIED Stamp */}
@@ -123,15 +124,13 @@ export function LoadingScreen({ onTimeout, onCancel }: LoadingScreenProps) {
         </motion.p>
       </AnimatePresence>
 
-      {/* Blinking cursor */}
-      {!prefersReducedMotion && (
-        <motion.span
-          className="inline-block w-2 h-5 bg-landing-accent mt-4"
-          aria-hidden="true"
-          animate={{ opacity: [1, 0, 1] }}
-          transition={{ duration: 1, repeat: Infinity }}
-        />
-      )}
+      {/* Blinking cursor (static when reduced motion preferred) */}
+      <motion.span
+        className="inline-block w-2 h-5 bg-landing-accent mt-4"
+        aria-hidden="true"
+        animate={prefersReducedMotion ? { opacity: 1 } : { opacity: [1, 0, 1] }}
+        transition={prefersReducedMotion ? { duration: 0 } : { duration: 1, repeat: Infinity }}
+      />
 
       {/* Cancel button */}
       <button

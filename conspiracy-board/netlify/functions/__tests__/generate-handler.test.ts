@@ -1,15 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-
-// Mock Anthropic SDK before importing the handler
-vi.mock('@anthropic-ai/sdk', () => {
-  return {
-    default: vi.fn().mockImplementation(() => ({
-      messages: {
-        create: vi.fn(),
-      },
-    })),
-  }
-})
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 function makeRequest(body: unknown, method = 'POST'): Request {
   return new Request('http://localhost/.netlify/functions/generate', {
@@ -19,19 +8,50 @@ function makeRequest(body: unknown, method = 'POST'): Request {
   })
 }
 
+/** Wrap a chain JSON in the Anthropic REST API response format */
+function makeApiResponse(text: string, status = 200): Response {
+  if (status !== 200) {
+    return new Response(JSON.stringify({ error: { type: 'api_error', message: text } }), {
+      status,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
+  return new Response(JSON.stringify({
+    id: 'msg_test',
+    type: 'message',
+    role: 'assistant',
+    model: 'claude-haiku-4-5-20251001',
+    content: [{ type: 'text', text }],
+    stop_reason: 'end_turn',
+    usage: { input_tokens: 100, output_tokens: 200, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 },
+  }), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  })
+}
+
+const VALID_CHAIN_JSON = JSON.stringify({
+  chain: Array.from({ length: 7 }, (_, i) => ({
+    title: `Node ${i}`, emoji: '🔍', font_category: 'horror',
+    teaser: 'Test teaser', briefing: 'Test briefing',
+  })),
+  case_file_number: 'CASE FILE #1234-A',
+  classification_level: 'TOP SECRET',
+})
+
 describe('generate handler', () => {
   let handler: (request: Request) => Promise<Response>
-  let mockCreate: ReturnType<typeof vi.fn>
+  let fetchSpy: ReturnType<typeof vi.fn>
+  const originalEnv = { ...process.env }
 
   beforeEach(async () => {
     vi.clearAllMocks()
+    vi.resetModules()
 
-    // Import fresh handler
-    const Anthropic = (await import('@anthropic-ai/sdk')).default
-    mockCreate = vi.fn()
-    vi.mocked(Anthropic).mockImplementation(() => ({
-      messages: { create: mockCreate },
-    }) as unknown as InstanceType<typeof Anthropic>)
+    process.env.ANTHROPIC_API_KEY = 'sk-ant-test-key'
+
+    fetchSpy = vi.fn()
+    vi.spyOn(globalThis, 'fetch').mockImplementation(fetchSpy)
 
     const mod = await import('../generate.ts')
     handler = mod.default
@@ -39,17 +59,21 @@ describe('generate handler', () => {
     mod._resetCircuitBreaker()
   })
 
+  afterEach(() => {
+    vi.restoreAllMocks()
+    process.env = { ...originalEnv }
+  })
+
   it('returns 500 when API returns invalid JSON', async () => {
-    mockCreate.mockResolvedValue({
-      content: [{ type: 'text', text: 'not json {{{' }],
-    })
+    fetchSpy.mockResolvedValue(makeApiResponse('not json {{{'))
 
     const res = await handler(makeRequest({ conceptA: 'Cats', conceptB: 'Pizza' }))
     expect(res.status).toBe(500)
   })
 
   it('never leaks raw error messages to client', async () => {
-    mockCreate.mockRejectedValue(new Error('Secret API internals'))
+    const error = new Error('Secret API internals')
+    fetchSpy.mockRejectedValue(error)
 
     const res = await handler(makeRequest({ conceptA: 'Cats', conceptB: 'Pizza' }))
     const body = await res.json()
@@ -65,6 +89,8 @@ describe('generate handler', () => {
   })
 
   it('returns X-Request-Id header on every response', async () => {
+    fetchSpy.mockResolvedValue(makeApiResponse(VALID_CHAIN_JSON))
+
     const res = await handler(makeRequest({ conceptA: 'Cats', conceptB: 'Pizza' }))
     const requestId = res.headers.get('X-Request-Id')
     expect(requestId).toBeTruthy()
@@ -73,6 +99,8 @@ describe('generate handler', () => {
   })
 
   it('echoes client-provided X-Request-Id header', async () => {
+    fetchSpy.mockResolvedValue(makeApiResponse(VALID_CHAIN_JSON))
+
     const clientId = 'client-trace-abc123'
     const req = new Request('http://localhost/.netlify/functions/generate', {
       method: 'POST',
@@ -90,7 +118,7 @@ describe('generate handler', () => {
   })
 
   it('circuit breaker opens after 3 consecutive API failures', async () => {
-    mockCreate.mockRejectedValue(new Error('API down'))
+    fetchSpy.mockRejectedValue(new Error('API down'))
 
     // 3 failures to trip the breaker
     for (let i = 0; i < 3; i++) {
@@ -98,44 +126,31 @@ describe('generate handler', () => {
     }
 
     // 4th request should be rejected by circuit breaker (503, no API call)
-    const callCountBefore = mockCreate.mock.calls.length
+    const callCountBefore = fetchSpy.mock.calls.length
     const res = await handler(makeRequest({ conceptA: 'Another', conceptB: 'Test' }))
     expect(res.status).toBe(503)
     const body = await res.json()
     expect(body.error).toBe('server_error')
     expect(body.message).toContain('temporarily unavailable')
-    // Verify API was NOT called
-    expect(mockCreate.mock.calls.length).toBe(callCountBefore)
+    // Verify fetch was NOT called again
+    expect(fetchSpy.mock.calls.length).toBe(callCountBefore)
   })
 
   it('circuit breaker resets after a successful request', async () => {
-    const validResponse = {
-      content: [{ type: 'text', text: JSON.stringify({
-        chain: Array.from({ length: 7 }, (_, i) => ({
-          title: `Node ${i}`, emoji: '🔍', font_category: 'horror',
-          teaser: 'Test teaser', briefing: 'Test briefing',
-        })),
-        case_file_number: 'CASE FILE #1234-A',
-        classification_level: 'TOP SECRET',
-      }) }],
-      usage: { input_tokens: 100, output_tokens: 200 },
-      model: 'test-model',
-    }
-
     // 2 failures (below threshold)
-    mockCreate.mockRejectedValueOnce(new Error('fail'))
-    mockCreate.mockRejectedValueOnce(new Error('fail'))
+    fetchSpy.mockRejectedValueOnce(new Error('fail'))
+    fetchSpy.mockRejectedValueOnce(new Error('fail'))
     await handler(makeRequest({ conceptA: 'A1', conceptB: 'B1' }))
     await handler(makeRequest({ conceptA: 'A2', conceptB: 'B2' }))
 
     // 1 success resets the counter
-    mockCreate.mockResolvedValueOnce(validResponse)
+    fetchSpy.mockResolvedValueOnce(makeApiResponse(VALID_CHAIN_JSON))
     const successRes = await handler(makeRequest({ conceptA: 'A3', conceptB: 'B3' }))
     expect(successRes.status).toBe(200)
 
     // 2 more failures (still below threshold since counter was reset)
-    mockCreate.mockRejectedValueOnce(new Error('fail'))
-    mockCreate.mockRejectedValueOnce(new Error('fail'))
+    fetchSpy.mockRejectedValueOnce(new Error('fail'))
+    fetchSpy.mockRejectedValueOnce(new Error('fail'))
     const res1 = await handler(makeRequest({ conceptA: 'A4', conceptB: 'B4' }))
     const res2 = await handler(makeRequest({ conceptA: 'A5', conceptB: 'B5' }))
     // These should still hit the API (not circuit-broken)

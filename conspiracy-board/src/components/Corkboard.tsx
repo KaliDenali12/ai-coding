@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
+import { useState, useMemo, useCallback, useEffect, useRef, type RefCallback } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
 import type { ConspiracyChain } from '@/types/conspiracy.ts'
 import { PolaroidCard } from './PolaroidCard.tsx'
@@ -82,11 +82,9 @@ export function Corkboard({ data, onNewInvestigation }: CorkboardProps) {
   )
 
   // Mark reveal complete after all animations finish
+  // (reduced-motion users get revealComplete=true from initial state)
   useEffect(() => {
-    if (prefersReducedMotion) {
-      setRevealComplete(true)
-      return
-    }
+    if (prefersReducedMotion) return
     const totalDuration =
       data.chain.length * STEP_DURATION +
       REVEAL_CARD_DELAY_MS +
@@ -109,6 +107,12 @@ export function Corkboard({ data, onNewInvestigation }: CorkboardProps) {
       if ((e.target as HTMLElement).closest('[data-testid="polaroid-card"]')) return
       setFlippedIndex(null)
     },
+    [],
+  )
+
+  // Auto-focus "New Investigation" button for keyboard users
+  const newInvestigationRef: RefCallback<HTMLButtonElement> = useCallback(
+    (node) => { node?.focus() },
     [],
   )
 
@@ -198,6 +202,7 @@ export function Corkboard({ data, onNewInvestigation }: CorkboardProps) {
           transition={{ duration: 0.4 }}
         >
           <button
+            ref={newInvestigationRef}
             onClick={onNewInvestigation}
             className="font-typewriter text-sm md:text-base px-8 py-3 bg-landing-bg/90 text-white border border-white/20 rounded-lg hover:bg-landing-bg hover:border-landing-accent/60 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-white/40 focus:ring-offset-2 focus:ring-offset-cork transition-all shadow-lg"
             data-testid="new-investigation-btn"

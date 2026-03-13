@@ -1,14 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
-
-// --- Mock Anthropic SDK ---
-const mockCreate = vi.fn()
-vi.mock('@anthropic-ai/sdk', () => ({
-  default: vi.fn().mockImplementation(() => ({
-    messages: { create: mockCreate },
-  })),
-}))
-
-import handler, { _resetRateLimiter, _resetCircuitBreaker } from '../generate.ts'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 
 function makeValidChain() {
   return {
@@ -24,6 +14,27 @@ function makeValidChain() {
   }
 }
 
+/** Wrap chain JSON in Anthropic REST API response format */
+function makeApiResponse(chainJson: string, delayMs = 0): Promise<Response> | Response {
+  const body = JSON.stringify({
+    id: 'msg_test',
+    type: 'message',
+    role: 'assistant',
+    model: 'claude-haiku-4-5-20251001',
+    content: [{ type: 'text', text: chainJson }],
+    stop_reason: 'end_turn',
+    usage: { input_tokens: 100, output_tokens: 200, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 },
+  })
+  const response = new Response(body, {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  })
+  if (delayMs > 0) {
+    return new Promise((resolve) => setTimeout(() => resolve(response), delayMs))
+  }
+  return response
+}
+
 function makeRequest(conceptA = 'Cats', conceptB = 'WiFi'): Request {
   return new Request('http://localhost/.netlify/functions/generate', {
     method: 'POST',
@@ -36,25 +47,34 @@ function makeRequest(conceptA = 'Cats', conceptB = 'WiFi'): Request {
 }
 
 describe('generate handler — concurrency', () => {
-  beforeEach(() => {
+  let handler: (request: Request) => Promise<Response>
+  let fetchSpy: ReturnType<typeof vi.fn>
+  const originalEnv = { ...process.env }
+
+  beforeEach(async () => {
     vi.clearAllMocks()
-    _resetRateLimiter()
-    _resetCircuitBreaker()
+    vi.resetModules()
+
+    process.env.ANTHROPIC_API_KEY = 'sk-ant-test-key'
+
+    fetchSpy = vi.fn()
+    vi.spyOn(globalThis, 'fetch').mockImplementation(fetchSpy)
+
+    const mod = await import('../generate.ts')
+    handler = mod.default
+    mod._resetRateLimiter()
+    mod._resetCircuitBreaker()
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+    process.env = { ...originalEnv }
   })
 
   it('rate limiter correctly counts concurrent requests from same IP', async () => {
     // Setup: mock slow API responses
-    mockCreate.mockImplementation(
-      () =>
-        new Promise((resolve) =>
-          setTimeout(
-            () =>
-              resolve({
-                content: [{ type: 'text', text: JSON.stringify(makeValidChain()) }],
-              }),
-            10,
-          ),
-        ),
+    fetchSpy.mockImplementation(
+      () => makeApiResponse(JSON.stringify(makeValidChain()), 10),
     )
 
     // Fire 5 concurrent requests from the same IP
@@ -68,17 +88,8 @@ describe('generate handler — concurrency', () => {
   })
 
   it('rate limiter enforces limit under concurrent burst', async () => {
-    mockCreate.mockImplementation(
-      () =>
-        new Promise((resolve) =>
-          setTimeout(
-            () =>
-              resolve({
-                content: [{ type: 'text', text: JSON.stringify(makeValidChain()) }],
-              }),
-            5,
-          ),
-        ),
+    fetchSpy.mockImplementation(
+      () => makeApiResponse(JSON.stringify(makeValidChain()), 5),
     )
 
     // Fire 25 concurrent requests (limit is 20)
@@ -95,9 +106,9 @@ describe('generate handler — concurrency', () => {
   })
 
   it('concurrent requests from different IPs do not interfere', async () => {
-    mockCreate.mockResolvedValue({
-      content: [{ type: 'text', text: JSON.stringify(makeValidChain()) }],
-    })
+    fetchSpy.mockImplementation(
+      () => makeApiResponse(JSON.stringify(makeValidChain())),
+    )
 
     // 10 requests each from 3 different IPs
     const ips = ['10.0.0.1', '10.0.0.2', '10.0.0.3']

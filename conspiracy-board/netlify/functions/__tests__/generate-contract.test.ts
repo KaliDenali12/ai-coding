@@ -1,15 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-
-// Mock Anthropic SDK before importing the handler
-vi.mock('@anthropic-ai/sdk', () => {
-  return {
-    default: vi.fn().mockImplementation(() => ({
-      messages: {
-        create: vi.fn(),
-      },
-    })),
-  }
-})
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 const VALID_NODE = {
   title: 'Test Node',
@@ -37,23 +26,56 @@ function makeRequest(body: unknown, method = 'POST'): Request {
   })
 }
 
+/** Wrap text in Anthropic REST API response format */
+function makeApiResponse(text: string, status = 200): Response {
+  if (status !== 200) {
+    return new Response(JSON.stringify({ error: { type: 'api_error', message: text } }), {
+      status,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
+  return new Response(JSON.stringify({
+    id: 'msg_test',
+    type: 'message',
+    role: 'assistant',
+    model: 'claude-haiku-4-5-20251001',
+    content: [{ type: 'text', text }],
+    stop_reason: 'end_turn',
+    usage: { input_tokens: 100, output_tokens: 200, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 },
+  }), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  })
+}
+
+/** Helper to make a successful API response with a valid chain */
+function makeSuccessResponse(): Response {
+  return makeApiResponse(JSON.stringify(VALID_CHAIN_RESPONSE))
+}
+
 describe('generate handler — API contract', () => {
   let handler: (request: Request) => Promise<Response>
-  let mockCreate: ReturnType<typeof vi.fn>
+  let fetchSpy: ReturnType<typeof vi.fn>
+  const originalEnv = { ...process.env }
 
   beforeEach(async () => {
     vi.clearAllMocks()
+    vi.resetModules()
 
-    const Anthropic = (await import('@anthropic-ai/sdk')).default
-    mockCreate = vi.fn()
-    vi.mocked(Anthropic).mockImplementation(() => ({
-      messages: { create: mockCreate },
-    }) as unknown as InstanceType<typeof Anthropic>)
+    process.env.ANTHROPIC_API_KEY = 'sk-ant-test-key'
+
+    fetchSpy = vi.fn()
+    vi.spyOn(globalThis, 'fetch').mockImplementation(fetchSpy)
 
     const mod = await import('../generate.ts')
     handler = mod.default
     mod._resetRateLimiter()
     mod._resetCircuitBreaker()
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+    process.env = { ...originalEnv }
   })
 
   // ── HTTP Method Contract ──────────────────────────────────────
@@ -110,9 +132,7 @@ describe('generate handler — API contract', () => {
 
   describe('200 success response structure', () => {
     beforeEach(() => {
-      mockCreate.mockResolvedValue({
-        content: [{ type: 'text', text: JSON.stringify(VALID_CHAIN_RESPONSE) }],
-      })
+      fetchSpy.mockResolvedValue(makeSuccessResponse())
     })
 
     it('returns 200 for valid request', async () => {
@@ -240,9 +260,7 @@ describe('generate handler — API contract', () => {
     })
 
     it('exactly-50-char concept is accepted', async () => {
-      mockCreate.mockResolvedValue({
-        content: [{ type: 'text', text: JSON.stringify(VALID_CHAIN_RESPONSE) }],
-      })
+      fetchSpy.mockResolvedValue(makeSuccessResponse())
       const fifty = 'a'.repeat(50)
       const res = await handler(makeRequest({ conceptA: fifty, conceptB: 'Pizza' }))
       expect(res.status).toBe(200)
@@ -314,12 +332,10 @@ describe('generate handler — API contract', () => {
 
   describe('502 invalid AI response structure', () => {
     it('wrong chain length returns 502 with error=invalid_response', async () => {
-      mockCreate.mockResolvedValue({
-        content: [{ type: 'text', text: JSON.stringify({
-          ...VALID_CHAIN_RESPONSE,
-          chain: VALID_CHAIN_RESPONSE.chain.slice(0, 3),
-        }) }],
-      })
+      fetchSpy.mockResolvedValue(makeApiResponse(JSON.stringify({
+        ...VALID_CHAIN_RESPONSE,
+        chain: VALID_CHAIN_RESPONSE.chain.slice(0, 3),
+      })))
       const res = await handler(makeRequest({ conceptA: 'Cats', conceptB: 'Pizza' }))
       expect(res.status).toBe(502)
       const body = await res.json()
@@ -333,9 +349,7 @@ describe('generate handler — API contract', () => {
           i === 0 ? { ...n, title: '' } : n,
         ),
       }
-      mockCreate.mockResolvedValue({
-        content: [{ type: 'text', text: JSON.stringify(badChain) }],
-      })
+      fetchSpy.mockResolvedValue(makeApiResponse(JSON.stringify(badChain)))
       const res = await handler(makeRequest({ conceptA: 'Cats', conceptB: 'Pizza' }))
       expect(res.status).toBe(502)
     })
@@ -347,20 +361,16 @@ describe('generate handler — API contract', () => {
           i === 0 ? { ...n, font_category: 'comic_sans' } : n,
         ),
       }
-      mockCreate.mockResolvedValue({
-        content: [{ type: 'text', text: JSON.stringify(badChain) }],
-      })
+      fetchSpy.mockResolvedValue(makeApiResponse(JSON.stringify(badChain)))
       const res = await handler(makeRequest({ conceptA: 'Cats', conceptB: 'Pizza' }))
       expect(res.status).toBe(502)
     })
 
     it('502 response has themed message, not raw validation error', async () => {
-      mockCreate.mockResolvedValue({
-        content: [{ type: 'text', text: JSON.stringify({
-          ...VALID_CHAIN_RESPONSE,
-          chain: [],
-        }) }],
-      })
+      fetchSpy.mockResolvedValue(makeApiResponse(JSON.stringify({
+        ...VALID_CHAIN_RESPONSE,
+        chain: [],
+      })))
       const res = await handler(makeRequest({ conceptA: 'Cats', conceptB: 'Pizza' }))
       const body = await res.json()
       expect(body.message).toContain('investigation has been shut down')
@@ -368,12 +378,10 @@ describe('generate handler — API contract', () => {
     })
 
     it('502 response has Content-Type application/json', async () => {
-      mockCreate.mockResolvedValue({
-        content: [{ type: 'text', text: JSON.stringify({
-          ...VALID_CHAIN_RESPONSE,
-          chain: [],
-        }) }],
-      })
+      fetchSpy.mockResolvedValue(makeApiResponse(JSON.stringify({
+        ...VALID_CHAIN_RESPONSE,
+        chain: [],
+      })))
       const res = await handler(makeRequest({ conceptA: 'Cats', conceptB: 'Pizza' }))
       expect(res.headers.get('Content-Type')).toBe('application/json')
     })
@@ -382,8 +390,8 @@ describe('generate handler — API contract', () => {
   // ── 500 Server Error Contract ─────────────────────────────────
 
   describe('500 server error response structure', () => {
-    it('SDK throw returns 500 with error=server_error', async () => {
-      mockCreate.mockRejectedValue(new Error('API key invalid'))
+    it('fetch throw returns 500 with error=server_error', async () => {
+      fetchSpy.mockRejectedValue(new Error('API key invalid'))
       const res = await handler(makeRequest({ conceptA: 'Cats', conceptB: 'Pizza' }))
       expect(res.status).toBe(500)
       const body = await res.json()
@@ -391,21 +399,25 @@ describe('generate handler — API contract', () => {
     })
 
     it('empty API content returns 500', async () => {
-      mockCreate.mockResolvedValue({ content: [] })
+      fetchSpy.mockResolvedValue(new Response(JSON.stringify({
+        id: 'msg_test', type: 'message', role: 'assistant',
+        model: 'claude-haiku-4-5-20251001',
+        content: [],
+        stop_reason: 'end_turn',
+        usage: { input_tokens: 100, output_tokens: 0 },
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
       const res = await handler(makeRequest({ conceptA: 'Cats', conceptB: 'Pizza' }))
       expect(res.status).toBe(500)
     })
 
     it('non-JSON API text returns 500', async () => {
-      mockCreate.mockResolvedValue({
-        content: [{ type: 'text', text: 'I cannot help with that' }],
-      })
+      fetchSpy.mockResolvedValue(makeApiResponse('I cannot help with that'))
       const res = await handler(makeRequest({ conceptA: 'Cats', conceptB: 'Pizza' }))
       expect(res.status).toBe(500)
     })
 
     it('never leaks internal error details to client', async () => {
-      mockCreate.mockRejectedValue(new Error('sk-ant-api03-LEAKED_KEY'))
+      fetchSpy.mockRejectedValue(new Error('sk-ant-api03-LEAKED_KEY'))
       const res = await handler(makeRequest({ conceptA: 'Cats', conceptB: 'Pizza' }))
       const body = await res.json()
       expect(JSON.stringify(body)).not.toContain('sk-ant-api03')
@@ -413,14 +425,14 @@ describe('generate handler — API contract', () => {
     })
 
     it('500 response has themed message', async () => {
-      mockCreate.mockRejectedValue(new Error('timeout'))
+      fetchSpy.mockRejectedValue(new Error('connection refused'))
       const res = await handler(makeRequest({ conceptA: 'Cats', conceptB: 'Pizza' }))
       const body = await res.json()
       expect(body.message).toContain('investigation has been shut down')
     })
 
     it('500 response has Content-Type application/json', async () => {
-      mockCreate.mockRejectedValue(new Error('fail'))
+      fetchSpy.mockRejectedValue(new Error('fail'))
       const res = await handler(makeRequest({ conceptA: 'Cats', conceptB: 'Pizza' }))
       expect(res.headers.get('Content-Type')).toBe('application/json')
     })
@@ -430,78 +442,50 @@ describe('generate handler — API contract', () => {
 
   describe('input handling behavior', () => {
     beforeEach(() => {
-      mockCreate.mockResolvedValue({
-        content: [{ type: 'text', text: JSON.stringify(VALID_CHAIN_RESPONSE) }],
-      })
+      fetchSpy.mockResolvedValue(makeSuccessResponse())
     })
 
     it('trims whitespace from concepts before processing', async () => {
       const res = await handler(makeRequest({ conceptA: '  Cats  ', conceptB: '  Pizza  ' }))
       expect(res.status).toBe(200)
-      expect(mockCreate).toHaveBeenCalledWith(
-        expect.objectContaining({
-          messages: [
-            expect.objectContaining({
-              content: expect.stringContaining('"Cats"'),
-            }),
-          ],
-        }),
-      )
-      expect(mockCreate).toHaveBeenCalledWith(
-        expect.objectContaining({
-          messages: [
-            expect.objectContaining({
-              content: expect.stringContaining('"Pizza"'),
-            }),
-          ],
-        }),
-      )
+      // Verify the fetch body contains trimmed concepts
+      const fetchCallBody = JSON.parse(fetchSpy.mock.calls[0][1].body as string)
+      const userMessage = fetchCallBody.messages[0].content as string
+      expect(userMessage).toContain('"Cats"')
+      expect(userMessage).toContain('"Pizza"')
     })
 
-    it('uses claude-sonnet-4-20250514 model', async () => {
+    it('uses claude-haiku-4-5-20251001 model', async () => {
       await handler(makeRequest({ conceptA: 'Cats', conceptB: 'Pizza' }))
-      expect(mockCreate).toHaveBeenCalledWith(
-        expect.objectContaining({
-          model: 'claude-sonnet-4-20250514',
-        }),
-      )
+      const fetchCallBody = JSON.parse(fetchSpy.mock.calls[0][1].body as string)
+      expect(fetchCallBody.model).toBe('claude-haiku-4-5-20251001')
     })
 
-    it('sets max_tokens to 4000', async () => {
+    it('sets max_tokens to 2000', async () => {
       await handler(makeRequest({ conceptA: 'Cats', conceptB: 'Pizza' }))
-      expect(mockCreate).toHaveBeenCalledWith(
-        expect.objectContaining({
-          max_tokens: 4000,
-        }),
-      )
+      const fetchCallBody = JSON.parse(fetchSpy.mock.calls[0][1].body as string)
+      expect(fetchCallBody.max_tokens).toBe(2000)
     })
 
     it('includes system prompt in API call with prompt caching', async () => {
       await handler(makeRequest({ conceptA: 'Cats', conceptB: 'Pizza' }))
-      expect(mockCreate).toHaveBeenCalledWith(
-        expect.objectContaining({
-          system: expect.arrayContaining([
-            expect.objectContaining({
-              type: 'text',
-              text: expect.stringContaining('conspiracy theory analyst'),
-              cache_control: { type: 'ephemeral' },
-            }),
-          ]),
-        }),
+      const fetchCallBody = JSON.parse(fetchSpy.mock.calls[0][1].body as string)
+      expect(fetchCallBody.system).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            type: 'text',
+            text: expect.stringContaining('conspiracy theory analyst'),
+            cache_control: { type: 'ephemeral' },
+          }),
+        ]),
       )
     })
 
     it('includes both concepts in user message', async () => {
       await handler(makeRequest({ conceptA: 'Penguins', conceptB: 'IKEA' }))
-      expect(mockCreate).toHaveBeenCalledWith(
-        expect.objectContaining({
-          messages: [
-            expect.objectContaining({
-              content: expect.stringMatching(/Penguins.*IKEA/),
-            }),
-          ],
-        }),
-      )
+      const fetchCallBody = JSON.parse(fetchSpy.mock.calls[0][1].body as string)
+      const userMessage = fetchCallBody.messages[0].content as string
+      expect(userMessage).toMatch(/Penguins.*IKEA/)
     })
   })
 
@@ -509,9 +493,7 @@ describe('generate handler — API contract', () => {
 
   describe('rate limiting', () => {
     beforeEach(() => {
-      mockCreate.mockResolvedValue({
-        content: [{ type: 'text', text: JSON.stringify(VALID_CHAIN_RESPONSE) }],
-      })
+      fetchSpy.mockResolvedValue(makeSuccessResponse())
     })
 
     it('allows requests within rate limit', async () => {
@@ -522,6 +504,8 @@ describe('generate handler — API contract', () => {
     it('returns 429 after exceeding rate limit', async () => {
       // Send 20 requests (the limit)
       for (let i = 0; i < 20; i++) {
+        // Each call consumes the previous mock, so keep providing new ones
+        fetchSpy.mockResolvedValueOnce(makeSuccessResponse())
         await handler(makeRequest({ conceptA: `Concept${i}`, conceptB: 'Pizza' }))
       }
       // 21st request should be rate limited
@@ -533,6 +517,7 @@ describe('generate handler — API contract', () => {
 
     it('429 response has Content-Type application/json', async () => {
       for (let i = 0; i < 20; i++) {
+        fetchSpy.mockResolvedValueOnce(makeSuccessResponse())
         await handler(makeRequest({ conceptA: `Concept${i}`, conceptB: 'Pizza' }))
       }
       const res = await handler(makeRequest({ conceptA: 'Extra', conceptB: 'Pizza' }))
@@ -542,6 +527,7 @@ describe('generate handler — API contract', () => {
 
     it('429 response has themed message', async () => {
       for (let i = 0; i < 20; i++) {
+        fetchSpy.mockResolvedValueOnce(makeSuccessResponse())
         await handler(makeRequest({ conceptA: `Concept${i}`, conceptB: 'Pizza' }))
       }
       const res = await handler(makeRequest({ conceptA: 'Extra', conceptB: 'Pizza' }))
@@ -552,6 +538,7 @@ describe('generate handler — API contract', () => {
     it('rate limits by IP from x-nf-client-connection-ip header', async () => {
       // Exhaust limit for IP 1.2.3.4
       for (let i = 0; i < 20; i++) {
+        fetchSpy.mockResolvedValueOnce(makeSuccessResponse())
         const req = new Request('http://localhost/.netlify/functions/generate', {
           method: 'POST',
           headers: {
@@ -576,6 +563,7 @@ describe('generate handler — API contract', () => {
       expect(limitedRes.status).toBe(429)
 
       // Different IP should still work
+      fetchSpy.mockResolvedValueOnce(makeSuccessResponse())
       const otherReq = new Request('http://localhost/.netlify/functions/generate', {
         method: 'POST',
         headers: {

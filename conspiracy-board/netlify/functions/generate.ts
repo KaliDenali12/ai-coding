@@ -1,4 +1,6 @@
-import Anthropic from '@anthropic-ai/sdk'
+// Native fetch is used instead of the Anthropic SDK because the SDK hangs
+// indefinitely on Netlify Functions runtime (bundling/runtime incompatibility).
+// Direct fetch to the REST API works reliably.
 
 const FONT_CATEGORIES = [
   'horror', 'corporate', 'ancient', 'chaotic', 'scientific',
@@ -94,7 +96,7 @@ RESPONSE FORMAT: Respond with ONLY a valid JSON object (no markdown, no code fen
       "emoji": "single expressive emoji",
       "font_category": "one of: horror, corporate, ancient, chaotic, scientific, military, mystical, retro, underground",
       "teaser": "One sentence summary of the connection",
-      "briefing": "2-3 paragraphs of deadpan conspiracy text with fictional citations, invented organizations, and fabricated statistics. This is where the real entertainment lives."
+      "briefing": "1-2 short paragraphs of deadpan conspiracy text with a fictional citation or invented statistic. Keep each briefing under 150 words."
     }
   ],
   "case_file_number": "CASE FILE #XXXX-X (random)",
@@ -269,6 +271,8 @@ export default async (request: Request): Promise<Response> => {
   // and returned in X-Request-Id response header for client-side correlation.
   const requestId = request.headers.get('x-request-id') ?? generateRequestId()
 
+  try {
+
   if (request.method !== 'POST') {
     console.log(JSON.stringify({ event: 'request_rejected', reason: 'method_not_allowed', method: request.method, requestId }))
     return jsonResponse({ error: 'method_not_allowed', message: 'Method not allowed' }, 405, requestId)
@@ -352,41 +356,89 @@ export default async (request: Request): Promise<Response> => {
       }, 503, requestId)
     }
 
-    // Call Claude API
-    // Explicit timeout: Anthropic SDK defaults to 10 minutes, which far exceeds
-    // Netlify's function timeout (10-26s). Without this, the function hangs until
-    // Netlify force-kills it, returning no error response to the client.
-    const apiTimeoutMs = Number(process.env.ANTHROPIC_TIMEOUT_MS) || 25_000
-    const client = new Anthropic({ timeout: apiTimeoutMs })
+    // Call Claude API via native fetch.
+    // The Anthropic SDK hangs on Netlify Functions runtime due to a bundling
+    // incompatibility, so we call the REST API directly instead.
+    const apiTimeoutMs = Number(process.env.ANTHROPIC_TIMEOUT_MS) || 24_000
+    const apiKey = process.env.ANTHROPIC_API_KEY
+    if (!apiKey) {
+      console.error(JSON.stringify({ event: 'generate_error', errorType: 'config', error: 'ANTHROPIC_API_KEY not set', requestId }))
+      return jsonResponse({ error: 'server_error', message: 'Server configuration error.' }, 500, requestId)
+    }
 
-    const message = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 4000,
-      system: [
-        {
-          type: 'text' as const,
-          text: SYSTEM_PROMPT,
-          cache_control: { type: 'ephemeral' as const },
-        },
-      ],
-      messages: [
-        {
-          role: 'user',
-          content: `Connect these two concepts with a conspiracy chain: "${a}" and "${b}"`,
-        },
-      ],
+    console.log(JSON.stringify({ event: 'api_call_start', requestId, apiTimeoutMs, model: 'claude-haiku-4-5-20251001' }))
+
+    const apiResponse = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 2000,
+        system: [
+          {
+            type: 'text',
+            text: SYSTEM_PROMPT,
+            cache_control: { type: 'ephemeral' },
+          },
+        ],
+        messages: [
+          {
+            role: 'user',
+            content: `Connect these two concepts with a conspiracy chain: "${a}" and "${b}"`,
+          },
+        ],
+      }),
+      signal: AbortSignal.timeout(apiTimeoutMs),
     })
 
+    if (!apiResponse.ok) {
+      const errBody = await apiResponse.text().catch(() => 'Could not read error body')
+      const status = apiResponse.status
+      // Classify error for circuit breaker and response
+      if (status === 429) {
+        recordCircuitFailure()
+        console.error(JSON.stringify({ event: 'generate_error', errorType: 'api_rate_limited', status, requestId, latencyMs: Date.now() - requestStartMs }))
+        return jsonResponse({ error: 'server_error', message: 'Our intelligence network is overwhelmed. Please try again shortly.' }, 503, requestId)
+      }
+      if (status === 401 || status === 403) {
+        recordCircuitFailure()
+        console.error(JSON.stringify({ event: 'generate_error', errorType: 'auth_failure', severity: 'CRITICAL', status, body: errBody.substring(0, 200), requestId, latencyMs: Date.now() - requestStartMs }))
+        return jsonResponse({ error: 'server_error', message: 'Our sources indicate this investigation has been shut down. Please try again or investigate different subjects.' }, 500, requestId)
+      }
+      if (status === 529) {
+        recordCircuitFailure()
+        console.error(JSON.stringify({ event: 'generate_error', errorType: 'api_overloaded', status, requestId, latencyMs: Date.now() - requestStartMs }))
+        return jsonResponse({ error: 'server_error', message: 'Our sources are temporarily unavailable. Please try again in a moment.' }, 503, requestId)
+      }
+      recordCircuitFailure()
+      console.error(JSON.stringify({ event: 'generate_error', errorType: 'api_error', status, body: errBody.substring(0, 200), requestId, latencyMs: Date.now() - requestStartMs }))
+      return jsonResponse({ error: 'server_error', message: 'Our sources indicate this investigation has been shut down. Please try again or investigate different subjects.' }, 502, requestId)
+    }
+
+    const apiData = await apiResponse.json() as {
+      content: Array<{ type: string; text?: string }>
+      usage?: { input_tokens?: number; output_tokens?: number; cache_read_input_tokens?: number; cache_creation_input_tokens?: number }
+      model?: string
+    }
+
     // Extract text content
-    const textBlock = message.content.find((block) => block.type === 'text')
-    if (!textBlock || textBlock.type !== 'text') {
+    const textBlock = apiData.content?.find((block: { type: string }) => block.type === 'text')
+    if (!textBlock || !('text' in textBlock) || typeof textBlock.text !== 'string') {
       throw new Error('No text content in API response')
     }
 
-    // Parse and validate JSON
+    // Parse and validate JSON — strip markdown code fences if present
+    let jsonText = textBlock.text.trim()
+    if (jsonText.startsWith('```')) {
+      jsonText = jsonText.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '')
+    }
     let parsed: unknown
     try {
-      parsed = JSON.parse(textBlock.text)
+      parsed = JSON.parse(jsonText)
     } catch {
       throw new Error('API response is not valid JSON')
     }
@@ -401,11 +453,11 @@ export default async (request: Request): Promise<Response> => {
       event: 'generate_success',
       requestId,
       latencyMs,
-      inputTokens: message.usage?.input_tokens,
-      outputTokens: message.usage?.output_tokens,
-      cacheRead: message.usage?.cache_read_input_tokens ?? 0,
-      cacheWrite: message.usage?.cache_creation_input_tokens ?? 0,
-      model: message.model,
+      inputTokens: apiData.usage?.input_tokens,
+      outputTokens: apiData.usage?.output_tokens,
+      cacheRead: apiData.usage?.cache_read_input_tokens ?? 0,
+      cacheWrite: apiData.usage?.cache_creation_input_tokens ?? 0,
+      model: apiData.model,
       requestSizeBytes: rawBody.length,
       responseSizeBytes: responseBody.length,
     }))
@@ -417,21 +469,14 @@ export default async (request: Request): Promise<Response> => {
   } catch (error) {
     const errorName = error instanceof Error ? error.name : 'UnknownError'
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-
-    // Differentiate Anthropic SDK errors for accurate status codes and logging.
-    // Uses error.status (set by the SDK) instead of instanceof to remain
-    // compatible with module mocking in tests.
-    const sdkStatus = (error as { status?: number }).status
     const latencyMs = Date.now() - requestStartMs
 
-    // Record API-level failures for circuit breaker (timeouts, rate limits, auth).
-    // Validation failures (bad AI output) don't count — the API itself is working.
+    // Validation failures (bad AI output) don't trip the circuit breaker — the API itself is working.
     const isValidation = errorMessage.includes('node ') || errorMessage.includes('chain must') || errorMessage.includes('missing ')
-    if (!isValidation) {
-      recordCircuitFailure()
-    }
 
-    if (errorName === 'APIConnectionTimeoutError' || (errorName === 'APIConnectionError' && errorMessage.includes('timed out'))) {
+    // Timeout from AbortSignal.timeout()
+    if (errorName === 'TimeoutError' || errorName === 'AbortError') {
+      recordCircuitFailure()
       console.error(JSON.stringify({ event: 'generate_error', errorType: 'timeout', errorName, requestId, latencyMs }))
       return jsonResponse({
         error: 'server_error',
@@ -439,23 +484,26 @@ export default async (request: Request): Promise<Response> => {
       }, 504, requestId)
     }
 
-    if (sdkStatus === 429) {
-      console.error(JSON.stringify({ event: 'generate_error', errorType: 'api_rate_limited', errorName, requestId, latencyMs }))
-      return jsonResponse({
-        error: 'server_error',
-        message: 'Our intelligence network is overwhelmed. Please try again shortly.',
-      }, 503, requestId)
+    if (!isValidation) {
+      recordCircuitFailure()
     }
 
-    if (sdkStatus === 401) {
-      console.error(JSON.stringify({ event: 'generate_error', errorType: 'auth_failure', severity: 'CRITICAL', errorName, requestId, latencyMs }))
-    } else {
-      console.error(JSON.stringify({ event: 'generate_error', errorType: 'unknown', errorName, errorMessage, requestId, latencyMs }))
-    }
+    console.error(JSON.stringify({ event: 'generate_error', errorType: isValidation ? 'validation' : 'unknown', errorName, errorMessage, requestId, latencyMs }))
 
     return jsonResponse({
       error: isValidation ? 'invalid_response' : 'server_error',
       message: 'Our sources indicate this investigation has been shut down. Please try again or investigate different subjects.',
     }, isValidation ? 502 : 500, requestId)
+  }
+
+  } catch (outerError) {
+    // Safety net: catch any completely unexpected error that escapes the inner try/catch.
+    // Without this, the function crashes and Netlify returns a generic 502 with no diagnostics.
+    const msg = outerError instanceof Error ? outerError.message : String(outerError)
+    console.error(JSON.stringify({ event: 'unhandled_error', error: msg, requestId }))
+    return jsonResponse({
+      error: 'server_error',
+      message: 'An unexpected error occurred. Please try again.',
+    }, 500, requestId)
   }
 }

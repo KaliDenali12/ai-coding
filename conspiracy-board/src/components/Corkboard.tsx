@@ -125,6 +125,11 @@ export function Corkboard({ data, onNewInvestigation }: CorkboardProps) {
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [])
 
+  // Delay (in seconds) for UI elements that appear after the reveal sequence
+  const postRevealDelay = prefersReducedMotion
+    ? 0
+    : (data.chain.length * STEP_DURATION + REVEAL_CARD_DELAY_MS + 500) / 1000
+
   // Generate string paths between consecutive cards
   const stringPaths = useMemo(() => {
     const paths: string[] = []
@@ -147,6 +152,47 @@ export function Corkboard({ data, onNewInvestigation }: CorkboardProps) {
       onClick={handleBoardClick}
       data-testid="corkboard"
     >
+      {/* Top instruction banner — wrapper handles centering, motion.div handles animation */}
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 text-center">
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: postRevealDelay }}
+          data-testid="corkboard-banner"
+        >
+          <p className="font-typewriter text-base md:text-xl text-white tracking-widest drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)] bg-landing-bg/70 px-8 py-3 rounded-lg border border-white/15">
+            Click each card to declassify the truth.
+          </p>
+        </motion.div>
+      </div>
+
+      {/* "BEGIN INVESTIGATION HERE" arrow pointing down to first card */}
+      {positions[0] && (
+        <div
+          className="absolute z-30 flex flex-col items-center"
+          style={{
+            left: (positions[0].x ?? 0) + cardWidth / 2,
+            top: (positions[0].y ?? 0) - (isMobile ? 50 : 65),
+            transform: 'translateX(-50%)',
+          }}
+        >
+          <motion.div
+            className="flex flex-col items-center"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: postRevealDelay + 0.3 }}
+            data-testid="start-here-arrow"
+          >
+            <span className="font-military text-xs md:text-sm text-landing-accent tracking-widest drop-shadow-[0_1px_3px_rgba(0,0,0,0.7)] whitespace-nowrap">
+              BEGIN INVESTIGATION HERE
+            </span>
+            <svg width="20" height="24" viewBox="0 0 20 24" className="text-landing-accent drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)] mt-1" aria-hidden="true">
+              <path d="M10 0 L10 16 M4 12 L10 20 L16 12" stroke="currentColor" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </motion.div>
+        </div>
+      )}
+
       {/* SVG layer for strings */}
       <svg
         className="absolute inset-0 w-full pointer-events-none z-0"

@@ -51,8 +51,8 @@ export const ERROR_MESSAGES: Array<{
 
 export const LOADING_MESSAGE_INTERVAL_MS = 1500
 export const SLOW_THRESHOLD_MS = 10000
-export const TIMEOUT_THRESHOLD_MS = 18000
-export const FAIL_THRESHOLD_MS = 26000
+export const TIMEOUT_THRESHOLD_MS = 20000
+export const FAIL_THRESHOLD_MS = 35000
 
 export const REVEAL_CARD_DELAY_MS = 400
 export const REVEAL_STRING_DURATION_MS = 500

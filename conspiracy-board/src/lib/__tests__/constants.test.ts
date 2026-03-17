@@ -80,7 +80,7 @@ describe('Timing thresholds', () => {
     expect(TIMEOUT_THRESHOLD_MS).toBeLessThan(FAIL_THRESHOLD_MS)
   })
 
-  it('fail threshold is at most 30 seconds', () => {
-    expect(FAIL_THRESHOLD_MS).toBeLessThanOrEqual(30000)
+  it('fail threshold is at most 40 seconds', () => {
+    expect(FAIL_THRESHOLD_MS).toBeLessThanOrEqual(40000)
   })
 })

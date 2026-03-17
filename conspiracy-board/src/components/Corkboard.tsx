@@ -183,10 +183,10 @@ export function Corkboard({ data, onNewInvestigation }: CorkboardProps) {
             transition={{ duration: 0.5, delay: postRevealDelay + 0.3 }}
             data-testid="start-here-arrow"
           >
-            <span className="font-military text-xs md:text-sm text-landing-accent tracking-widest drop-shadow-[0_1px_3px_rgba(0,0,0,0.7)] whitespace-nowrap">
+            <span className="font-military text-xs md:text-sm text-white tracking-widest drop-shadow-[0_1px_3px_rgba(0,0,0,0.7)] whitespace-nowrap">
               BEGIN INVESTIGATION HERE
             </span>
-            <svg width="20" height="24" viewBox="0 0 20 24" className="text-landing-accent drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)] mt-1" aria-hidden="true">
+            <svg width="20" height="24" viewBox="0 0 20 24" className="text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)] mt-1" aria-hidden="true">
               <path d="M10 0 L10 16 M4 12 L10 20 L16 12" stroke="currentColor" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </motion.div>
